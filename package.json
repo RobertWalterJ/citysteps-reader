@@ -1,0 +1,8 @@
+{
+  "name": "citysteps-reader",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Phone PWA: read PDFs aloud and capture ideas. Phase 0 (planning).",
+  "devDependencies": { "pdfjs-dist": "6.3.289" }
+}
