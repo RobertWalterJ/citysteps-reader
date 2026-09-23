@@ -12,7 +12,7 @@ their original paths.
 | 1c | Single-column manuscript | `Carson_etal_2020_Imagining_a_Post_Covid_19_World_of_Real_Estate.pdf` | cover page, footnote markers, references |
 | 1d | Book-chapter style | `22423-Article Text-54244-1-10-20170201 (1).pdf` | 30 pages, epigraphs, running headers both sides |
 | 2a | Municipal report | `1536-KING-ST-W - CA Staff Report.pdf` | City memo, photo, quoted OP policy |
-| 2b | Municipal table | `Documents\GPA Work - Claude Cowork\Policy and Legislation\City of Toronto - Topic Files\Inclusionary Zoning\Inclusionary-zoning-jurisdictional-scan_ATTACHMENT2_backgroundfile-133050.pdf` | a whole-page table: must become a card, not be read aloud |
+| 2b | Municipal table | `Documents\GPA Work - Claude Cowork\Policy and Legislation\City of Toronto — Topic Files\Inclusionary Zoning\Inclusionary-zoning-jurisdictional-scan_ATTACHMENT2_backgroundfile-133050.pdf` | a whole-page table: must become a card, not be read aloud |
 | 3 | News | `Is a bedroom for the cat a sign of Canada’s new housing aristocracy_ - The Globe and Mail.pdf` | browser-printed article: date/URL header and footer on every page |
 | 4 | Scan, no text layer | `PLN-CA Sign Posting Photo - NOV 19  2020.pdf` | detection, then OCR |
 
