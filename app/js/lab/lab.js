@@ -35,27 +35,33 @@ async function device() {
     (r.crossOriginIsolated ? '' : '\n\nNot isolated yet: reload this page once so the service worker can add the headers that allow several threads.'));
 }
 
-// ---------- 2. Kokoro ----------
+// ---------- 2. Piper ----------
+// Kokoro results from the first run (processor 0.27x, graphics chip noise)
+// stay in the saved results. Each worker is ended once its test finishes:
+// the first run kept a 326 MB model in memory into test 3, and the phone
+// crashed.
 let ttsWorker = null;
 document.querySelectorAll('[data-tts]').forEach((b) => b.onclick = () => {
-  const device = b.dataset.tts;
+  const voice = b.dataset.tts;
   document.querySelectorAll('[data-tts]').forEach((x) => { x.disabled = true; });
-  show('outTts', `Starting (${device})...`);
+  show('outTts', `Starting (${voice})...`);
   ttsWorker?.terminate();
-  ttsWorker = new Worker(new URL('./lab-tts-worker.js', import.meta.url), { type: 'module' });
+  ttsWorker = new Worker(new URL('./lab-piper-worker.js', import.meta.url), { type: 'module' });
   ttsWorker.onmessage = (e) => {
     const m = e.data;
     if (m.status) { show('outTts', m.status); return; }
+    ttsWorker.terminate(); ttsWorker = null;
     document.querySelectorAll('[data-tts]').forEach((x) => { x.disabled = false; });
-    if (m.error) { show('outTts', `Failed on ${device}: ${m.error}`); results['tts_' + device] = { error: m.error }; save(); return; }
-    results['tts_' + device] = m.result; save();
+    if (m.error) { show('outTts', `Failed (${voice}): ${m.error}`); results['piper_' + voice] = { error: m.error }; save(); return; }
+    results['piper_' + voice] = m.result; save();
     const r = m.result;
-    show('outTts', [`Engine: kokoro-js, ${device}, ${r.dtype}, ${r.threads} thread(s)`, `Download and load: ${fmt(r.loadSec)} s`,
+    show('outTts', [`Engine: Piper, ${voice}, processor`, `Download and load: ${fmt(r.loadSec)} s`,
       ...r.sentences.map((s, i) => `Sentence ${i + 1}: ${fmt(s.synthSec, 2)} s to make ${fmt(s.audioSec, 2)} s of speech (${fmt(s.audioSec / s.synthSec)}× real time)`),
       `Overall: ${fmt(r.speed)}× real time. ${r.speed >= 2 ? 'Fast enough to read live.' : r.speed >= 1 ? 'Keeps up, but only just: render ahead.' : 'Slower than speech: render ahead for the commute.'}`].join('\n'));
     const a = $('ttsAudio'); a.src = URL.createObjectURL(m.wav); a.hidden = false;
   };
-  ttsWorker.postMessage({ device });
+  results['piper_' + voice] = { started: now(), note: 'if this is all there is, the test crashed' }; save();
+  ttsWorker.postMessage({ voiceId: voice });
 });
 
 // ---------- 3. Whisper ----------
@@ -97,6 +103,7 @@ document.querySelectorAll('[data-stt]').forEach((b) => b.onclick = () => {
   sttWorker.onmessage = (e) => {
     const m = e.data;
     if (m.status) { show('outStt', m.status); return; }
+    sttWorker.terminate(); sttWorker = null;
     document.querySelectorAll('[data-stt]').forEach((x) => { x.disabled = false; });
     if (m.error) { show('outStt', `Failed: ${m.error}`); results['stt_' + model] = { error: m.error }; save(); return; }
     results['stt_' + model] = m.result; save();
@@ -104,7 +111,10 @@ document.querySelectorAll('[data-stt]').forEach((b) => b.onclick = () => {
     show('outStt', [`Model: ${model} on ${r.device} (${r.dtype}), ${r.threads} thread(s)`, `Download and load: ${fmt(r.loadSec)} s`,
       `Transcribed ${fmt(r.audioSec)} s of speech in ${fmt(r.sttSec)} s (${fmt(r.audioSec / r.sttSec)}× real time)`, `Text: ${r.text}`].join('\n'));
   };
-  sttWorker.postMessage({ model, audio: clip }, []);
+  // Written before the test runs: if the phone crashes, the results still say
+  // which test was running.
+  results['stt_' + model] = { started: now(), note: 'if this is all there is, the test crashed' }; save();
+  sttWorker.postMessage({ model, audio: clip.slice() });
 });
 
 // ---------- 4. lock screen ----------
@@ -148,16 +158,25 @@ $('lockAudio').onclick = () => {
 };
 $('lockSpeech').onclick = () => {
   stopLock(); lockKind = 'speech'; lockLog = []; lockRunning = true;
-  let n = 1;
+  // First run on the S23 FE: "synthesis-failed" on sentence 1, straight after
+  // stopLock() had cancelled. Android Chrome fails a speak() that follows a
+  // cancel() too closely, so wait a moment, name a voice, and retry once.
+  let n = 1, retried = false;
+  const voice = (speechSynthesis.getVoices() || []).filter((v) => /^en[-_](CA|GB|US)/i.test(v.lang)).sort((a, b) => (b.localService ? 1 : 0) - (a.localService ? 1 : 0))[0];
+  logLock(`voice: ${voice ? voice.name + ' (' + voice.lang + ')' : 'phone default'}`);
   const say = () => {
     if (!lockRunning) return;
     const u = new SpeechSynthesisUtterance(`Sentence ${n}. The built-in voice is still reading while the screen is locked, as far as it can tell.`);
+    if (voice) { u.voice = voice; u.lang = voice.lang; }
     u.onstart = () => logLock(`sentence ${n} started`);
-    u.onend = () => { n++; if (n > 30) { logLock('done after 30 sentences'); lockRunning = false; return; } say(); };
-    u.onerror = (e) => logLock('voice error: ' + e.error);
+    u.onend = () => { retried = false; n++; if (n > 30) { logLock('done after 30 sentences'); lockRunning = false; return; } say(); };
+    u.onerror = (e) => {
+      logLock('voice error: ' + e.error);
+      if (e.error === 'synthesis-failed' && !retried) { retried = true; setTimeout(say, 600); }
+    };
     speechSynthesis.speak(u);
   };
-  say();
+  setTimeout(say, 350);
 };
 function stopLock() { lockRunning = false; $('lockEl').pause(); speechSynthesis.cancel(); }
 $('lockStop').onclick = () => { if (lockRunning) logLock('stopped'); stopLock(); };

@@ -21,21 +21,22 @@
 <body>
 <header class="bar"><h1 class="wordmark"><span class="lane" aria-hidden="true"></span>Phone tests</h1></header>
 <main class="lab">
-  <p>Five tests that decide which voice and which transcription engine the Reader uses on this phone. Run them on Wi-Fi: tests 2 and 3 download models (roughly 100 to 350 MB each, once; the page shows the real size as it downloads). When you are done, tap <b>Copy all results</b> and paste them to Claude.</p>
+  <p>Five tests that decide which voice and which transcription engine the Reader uses on this phone. Run them on Wi-Fi: tests 2 and 3 download small models (roughly 40 to 120 MB each, once; the page shows the real size as it downloads). Run one test at a time. When you are done, tap <b>Copy all results</b> and paste them to Claude.</p>
   <div class="row"><button class="text-btn solid" id="copyAll">Copy all results</button><button class="text-btn" id="shareAll">Share results</button><button class="text-btn" id="clearAll">Clear results</button></div>
 
   <h2><span class="step">1</span>This phone</h2>
   <div class="out" id="outDevice">Checking...</div>
 
-  <h2><span class="step">2</span>Kokoro voice speed</h2>
-  <p class="note">Renders three sentences with the Kokoro voice Studio uses (Heart) and times it. Faster than 2× real time means it can read live; slower means it renders ahead for the commute.</p>
-  <div class="row"><button class="text-btn solid" data-tts="wasm">Test on the processor (92 MB)</button><button class="text-btn" data-tts="webgpu">Test on the graphics chip (326 MB)</button></div>
+  <h2><span class="step">2</span>Neural voice speed (Piper)</h2>
+  <p class="note">Kokoro is already measured on this phone: too slow on the processor, and noise on the graphics chip. Piper voices are much lighter. Each test renders three sentences on the processor and times it. Faster than 2&times; real time means it can read live.</p>
+  <div class="row"><button class="text-btn solid" data-tts="en_US-lessac-medium">American voice (Lessac)</button><button class="text-btn" data-tts="en_GB-cori-high">British voice (Cori, higher quality)</button></div>
   <div class="out" id="outTts">Not run yet.</div>
   <audio id="ttsAudio" controls hidden></audio>
 
-  <h2><span class="step">3</span>Whisper transcription speed</h2>
-  <p class="note">Record yourself talking for about 15 seconds (no rush: stop whenever you like), then transcribe it on the phone. The audio is saved first, as the app will always do.</p>
-  <div class="row"><button class="text-btn solid" id="recBtn">Start recording</button><button class="text-btn" data-stt="whisper-base" disabled>Transcribe, base model</button><button class="text-btn" data-stt="whisper-small" disabled>Transcribe, small model (bigger download)</button></div>
+  <h2><span class="step">3</span>Transcription speed</h2>
+  <p class="note">The graphics chip crashed the phone here, so these run on the processor with small models. Record yourself talking for about 15 seconds (stop whenever you like), then try each model. The audio is saved first, as the app will always do.</p>
+  <div class="row"><button class="text-btn solid" id="recBtn">Start recording</button></div>
+  <div class="row"><button class="text-btn" data-stt="whisper-tiny" disabled>Whisper tiny</button><button class="text-btn" data-stt="whisper-base" disabled>Whisper base</button><button class="text-btn" data-stt="moonshine-base" disabled>Moonshine base</button></div>
   <div class="out" id="outStt">Not run yet.</div>
 
   <h2><span class="step">4</span>Listening with the screen locked</h2>

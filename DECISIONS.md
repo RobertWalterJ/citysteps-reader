@@ -81,3 +81,19 @@ Newest last. Each entry states the choice, what else was considered, and why.
 ## D14. Kokoro on the processor will not read live (2026-09-23, measured on the PC)
 
 - On Robert's laptop, Kokoro 8-bit on the processor (4 threads, isolated) rendered at 0.5x real time; on the Intel graphics chip (WebGPU, fp32) at 1.8x after warm-up. A phone processor will be slower than the laptop's, so live Kokoro on the phone depends on its GPU. Phase 0.5 measures it; if the phone is below 2x, Kokoro is used only to render ahead ("prepare for the commute") and the built-in voice reads live.
+
+## D15. On the S23 FE, nothing heavy runs on the graphics chip (2026-09-24, measured on the phone)
+
+- **Found:** Kokoro 8-bit on the processor ran at 0.27x real time. Kokoro on the Adreno graphics chip (WebGPU) produced noise: peaks past full scale and about 8,700 zero crossings a second (speech is roughly 1,000 to 3,000), and it slowed the phone badly. Whisper base and small on the graphics chip crashed Chrome and the phone.
+- **Chosen:** voice and transcription run on the processor (WebAssembly, small 8-bit models). WebGPU is not used on this phone. Kokoro leaves the phone plan: the lighter **Piper** voices take its place (4.5x real time on the laptop's processor versus Kokoro's 0.5x), and **Moonshine base** is the leading transcription model (8x real time on the laptop, word for word; Whisper tiny 2.6x, base 1.6x). Phone numbers to confirm.
+- **Kept open:** Robert's Studio Kokoro voices can still be used for commute audio rendered on the PC's RTX 4070 and brought to the phone; decide after the Piper results.
+
+## D16. Built-in voice: leave a gap after cancel (2026-09-24)
+
+- **Found:** the phone's built-in voice failed with "synthesis-failed" when speak() came straight after cancel(). The reader does exactly that when skipping sentences or changing speed.
+- **Chosen:** `speech.js` waits out 250 ms after any cancel before speaking, and the player retries a failed sentence once before moving on.
+
+## D17. 8-bit transcription models need basic graph optimization (2026-09-24)
+
+- **Found:** with ONNX Runtime 1.30 on the processor, every 8-bit merged decoder (Whisper tiny, base, Moonshine) failed to load: "TransposeDQWeightsForMatMulNBits ... missing required scale". On the graphics chip that optimizer path never ran, which is why the first PC test passed.
+- **Chosen:** `graphOptimizationLevel: 'basic'`. All three then transcribed a test sentence word for word.

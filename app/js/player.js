@@ -63,7 +63,14 @@ export class Player {
   #jump(i) {
     if (i < 0 || i >= this.queue.length) return;
     this.idx = i;
-    if (this.playing) { this.token++; speech.cancel(); this.#speak(); }
+    if (this.playing) {
+      // Android Chrome fails a speak() that follows cancel() too closely
+      // ("synthesis-failed" on the S23 FE, Sept 2026), so leave a gap.
+      const my = ++this.token;
+      speech.cancel();
+      this.onSentence?.(this.idx, this.queue[this.idx]);
+      setTimeout(() => { if (my === this.token && this.playing) this.#speak(); }, 250);
+    }
     else this.onSentence?.(this.idx, this.queue[this.idx]);
   }
 
@@ -110,6 +117,8 @@ export class Player {
       onerror: (e) => {
         if (my !== this.token) return;
         if (e.error === 'interrupted' || e.error === 'canceled') return;
+        // One retry for a failed start before giving up on the sentence.
+        if (e.error === 'synthesis-failed' && !s.retried) { s.retried = true; this.token++; setTimeout(() => { if (this.playing) this.#speak(); }, 500); return; }
         // A voice that fails on one sentence (a URL, a formula) should not
         // stop the whole document.
         advance();

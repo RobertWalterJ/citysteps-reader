@@ -38,6 +38,7 @@ await build({ ...common, entryPoints: { main: join(APP, 'js', 'main.js') }, outd
 await build({ ...common, entryPoints: { 'parse-worker': join(APP, 'js', 'parse', 'worker.js') }, outdir: join(OUT, 'js') });
 // The phone tests page (Phase 0.5): its own bundle so the reader stays small.
 await build({ ...common, entryPoints: { lab: join(APP, 'js', 'lab', 'lab.js'), 'lab-tts-worker': join(APP, 'js', 'lab', 'tts-worker.js') }, outdir: join(OUT, 'js') });
+await build({ ...common, platform: 'browser', entryPoints: { 'lab-piper-worker': join(APP, 'js', 'lab', 'piper-worker.js') }, outdir: join(OUT, 'js'), splitting: true, chunkNames: 'piper-[hash]', external: ['fs', 'path'] });  // Node-only branches in Piper's emscripten code
 await build({ ...common, platform: 'browser', entryPoints: { 'lab-stt-worker': join(APP, 'js', 'lab', 'stt-worker.js') }, outdir: join(OUT, 'js') });
 // kokoro-js ships a self-contained browser build; the test worker imports it as is.
 mkdirSync(join(OUT, 'vendor'), { recursive: true });
