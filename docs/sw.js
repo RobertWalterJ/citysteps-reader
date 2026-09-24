@@ -13,7 +13,7 @@
 //    without them the on-device voice and transcription models run on one CPU
 //    thread. The worker adds the headers to the pages it serves.
 
-const VERSION = "csreader-v1-90ea5e7+-202609240723";   // stamped per deploy by build/build.mjs
+const VERSION = "csreader-v1-29e9698-202609240724";   // stamped per deploy by build/build.mjs
 const PREFIX = 'csreader-';
 const PRECACHE = ['./', 'index.html', 'css/app.css', 'fonts/fonts.css', 'js/main.js', 'js/parse-worker.js', 'manifest.webmanifest', 'icons/icon-192.png'];
 
