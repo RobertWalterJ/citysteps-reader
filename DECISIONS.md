@@ -105,3 +105,13 @@ Newest last. Each entry states the choice, what else was considered, and why.
 - **Built-in voice, locked:** "interrupted" the moment the screen locked. It cannot be the lock-screen voice.
 - **Audio pieces, locked:** two pieces played locked, then playback stopped about 30 s in: Android froze the page, so nothing started the next piece. Testing one long file next (v0.2.3). If it holds, commute listening renders each section into one long file ahead of time.
 - **Recording, locked:** the microphone stopped when the screen locked (a 22 s gap) and resumed on unlock. Chunks saved before the lock were kept, so save-first works. A web app cannot record with the screen locked, so: (a) in-app recording keeps the screen awake behind a dark "recording" screen; (b) long or locked sessions are recorded in Samsung Voice Recorder and shared into Reader, which transcribes them (Phase 2 adds audio to the share target).
+
+## D19. Phase 2 capture (2026-09-24)
+
+- **Voice:** Robert likes Alba (Scottish) and Northern English (man). Alba is the default neural voice when Piper arrives in the reader (Phase 4); Northern English second.
+- **Recording** writes 5-second pieces to IndexedDB as they arrive (`chunks`), joins them on Stop (`recordings`), and on every start-up joins any pieces left by a crash and queues them. Verified on the PC by writing pieces directly and reloading: joined, marked interrupted, transcribed word for word.
+- **The recording screen** is dark with one big Stop button, holds a wake lock, and shows how much is saved ("about 3 minutes"), updated as each piece is stored. No clock (Robert is dyslexic: no timers).
+- **Transcription** is a queue over the notes themselves: it survives the app closing, waits for a connection if the model has not downloaded yet, and retries on `online`. The words are appended to the note; the raw transcript stays with the recording. A save while a transcript lands merges rather than overwrites.
+- **Share target** now also takes audio (Samsung Voice Recorder) and Markdown; audio becomes a note with a queued recording.
+- **Backup** refuses a public repo outright, writes only notes changed since the last backup (plus `library.json` when the library changes), and files notes as `notes/<type>/<date>-<title>-<id>.md`.
+- **Studio** gained "Export all notes for CitySteps Reader" in its menu; Reader also accepts Studio's older single-note session file.

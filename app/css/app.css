@@ -245,3 +245,75 @@ button { font: inherit; color: inherit; }
 }
 .banner { display: flex; align-items: center; gap: 12px; margin: 0 0 14px; padding: 12px 14px; border-radius: 12px; background: var(--butter-soft); border: 1px solid var(--line); font-size: 15px; }
 .banner span { flex: 1; }
+
+/* ---------- tabs: Library | Notes ---------- */
+.tabs { display: flex; gap: 6px; padding: 8px 16px 0; max-width: 760px; margin: 0 auto; }
+.tab {
+  flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 48px;
+  border-radius: 12px; color: var(--muted); text-decoration: none; font-weight: 600;
+  border: 1px solid var(--line);
+}
+.tab svg { width: 20px; height: 20px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.tab[aria-current="page"] { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+
+/* ---------- notes list ---------- */
+.new-row { display: grid; grid-template-columns: 1fr auto; gap: 10px; }
+.new-row .add-card { margin-bottom: 14px; }
+.plus svg { width: 22px; height: 22px; stroke: var(--paper); stroke-width: 2.2; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+.quiet-card { background: var(--card); border: 1px solid var(--line); }
+.filters { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 10px; }
+.filters button {
+  min-height: 40px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--line); background: var(--card); cursor: pointer; font-size: 15px;
+}
+.filters button[aria-pressed="true"] { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+.search { width: 100%; min-height: 48px; font: inherit; padding: 8px 14px; border-radius: 12px; border: 1px solid var(--line); background: var(--card); color: var(--ink); margin: 0 0 14px; }
+.note-snip { color: var(--muted); font-size: 15px; display: block; margin-top: 4px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.status-chip { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); }
+.status-chip .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--signal); }
+.status-chip.failed { color: var(--danger); }
+.status-chip.failed .dot { background: var(--danger); }
+
+/* ---------- one note ---------- */
+.note-edit { max-width: 680px; margin: 0 auto; padding: 14px 16px 150px; }
+.note-edit .seg { margin-bottom: 12px; }
+.note-edit .seg button { font-size: 14px; padding: 0 6px; }
+.note-body {
+  width: 100%; min-height: 42vh; resize: vertical; padding: 14px; border-radius: 12px; border: 1px solid var(--line);
+  background: var(--rd-bg, var(--card)); color: var(--ink);
+  font-family: var(--ui); font-size: var(--rd-size); line-height: var(--rd-line); letter-spacing: var(--rd-letter); word-spacing: var(--rd-word);
+  margin-bottom: 14px;
+}
+.source-card { border-left: 4px solid var(--signal); background: var(--butter-soft); border-radius: 0 10px 10px 0; padding: 10px 12px; margin: 0 0 10px; font-size: 15px; }
+.source-card q { display: block; quotes: none; margin-bottom: 6px; }
+.source-card button { border: 0; background: none; padding: 6px 0; min-height: 40px; font-weight: 600; text-decoration: underline; cursor: pointer; }
+.rec-card { border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; margin: 0 0 10px; background: var(--card); font-size: 15px; }
+.rec-card audio { width: 100%; margin: 6px 0; }
+.rec-card details { color: var(--muted); }
+.saved-line { color: var(--muted); font-size: 14px; }
+.btn-ico { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; vertical-align: -3px; }
+.player .text-btn { display: inline-flex; align-items: center; gap: 6px; }
+
+/* ---------- recording: dark, calm, big Stop ---------- */
+.recorder {
+  position: fixed; inset: 0; z-index: 70; background: #0E0E0C; color: #F0EDE1;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px;
+  padding: 24px 22px calc(24px + env(safe-area-inset-bottom)); text-align: center;
+}
+.rec-top { font: 700 24px/1.2 var(--display); display: flex; align-items: center; gap: 12px; }
+.rec-dot { width: 14px; height: 14px; border-radius: 50%; background: #E5484D; animation: pulse 1.6s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .rec-dot { animation: none; } }
+.rec-from { color: #B2AE9F; max-width: 32em; margin: 0; font-size: 15px; }
+.meter { width: min(320px, 80vw); height: 10px; border-radius: 5px; background: #2A2922; overflow: hidden; }
+.meter i { display: block; height: 100%; width: 0; background: #FFD400; transition: width 80ms linear; }
+.rec-saved { margin: 0; color: #B2AE9F; font-size: 15px; }
+.recorder .seg { border-color: #37352C; width: min(420px, 100%); }
+.recorder .seg button { color: #F0EDE1; font-size: 14px; }
+.recorder .seg button[aria-pressed="true"] { background: #F0EDE1; color: #0E0E0C; }
+.rec-stop {
+  width: 132px; height: 132px; border-radius: 50%; border: 0; background: #F0EDE1; color: #0E0E0C;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+  font: 700 18px/1 var(--display); cursor: pointer;
+}
+.rec-stop .sq { width: 30px; height: 30px; border-radius: 6px; background: #E5484D; }
+.rec-help { color: #8F8B7E; font-size: 14px; max-width: 30em; margin: 0; }
+.small-h { font: 700 16px/1.3 var(--display); margin: 20px 0 8px; }

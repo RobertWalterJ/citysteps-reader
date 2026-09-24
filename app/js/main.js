@@ -5,7 +5,10 @@ import * as db from './db.js';
 import * as speech from './speech.js';
 import { importFile } from './importer.js';
 import { renderLibrary, docMenu, working, upgradeDone } from './library.js';
-import { openDoc, closeDoc, wireReader } from './reader.js';
+import { openDoc, closeDoc, wireReader, setPendingJump } from './reader.js';
+import { renderNotes, openNote, wireNotes, importFromShare } from './notes/view.js';
+import { recoverInterrupted } from './notes/store.js';
+import { runQueue } from './notes/transcribe.js';
 import { wireSheets, toast, esc, openSheet, closeSheet } from './ui.js';
 import { applyPrefs } from './prefs.js';
 
@@ -16,25 +19,36 @@ applyPrefs();
 speech.initSpeech();
 wireSheets();
 wireReader({ onBack: () => { location.hash = ''; } });
+wireNotes({ openDocAt: (a) => { setPendingJump(a); location.hash = 'doc=' + a.docId; } });
 addEventListener('pointerdown', () => speech.unlock(), { once: true, capture: true });
 matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', applyPrefs);
 
 // ---------- routing ----------
+const VIEWS = ['libraryView', 'notesView', 'noteView', 'readerView'];
+function show(view) { for (const v of VIEWS) $(v).hidden = v !== view; }
 async function route() {
-  const id = /^#doc=([\w-]+)/.exec(location.hash)?.[1];
-  if (id) {
-    await upgradeDone(id);
-    const ok = await openDoc(id);
-    if (!ok) return;
-    $('libraryView').hidden = true;
-    $('readerView').hidden = false;
+  const h = location.hash;
+  const doc = /^#doc=([\w-]+)/.exec(h)?.[1];
+  const note = /^#note=([\w-]+)/.exec(h)?.[1];
+  if (!doc) closeDoc();
+  if (doc) {
+    await upgradeDone(doc);
+    if (!(await openDoc(doc))) return;
+    show('readerView');
+  } else if (note) {
+    if (!(await openNote(note))) return;
+    show('noteView');
+    document.title = 'Note · CitySteps Reader';
+  } else if (h === '#notes') {
+    show('notesView');
+    document.title = 'Notes · CitySteps Reader';
+    await renderNotes();
   } else {
-    closeDoc();
-    $('readerView').hidden = true;
-    $('libraryView').hidden = false;
+    show('libraryView');
     document.title = 'CitySteps Reader';
     await renderLibrary();
   }
+  window.scrollTo(0, 0);
 }
 addEventListener('hashchange', route);
 
@@ -79,12 +93,18 @@ lib.addEventListener('drop', (e) => { e.preventDefault(); $('addBtn').classList.
 
 // PDFs shared from another app arrive through the service worker, which
 // parks them in the `inbox` store and sends us to ./?shared=1.
+// PDFs go to the library; recordings (Samsung Voice Recorder) and Markdown
+// go to Notes.
 async function drainInbox() {
   let items = [];
   try { items = await db.all('inbox'); } catch { return; }
   if (!items.length) return;
   for (const it of items) await db.del('inbox', it.id);
-  await addFiles(items.map((it) => new File([it.blob], it.name || 'shared.pdf', { type: 'application/pdf' })), 'share');
+  const files = items.map((it) => new File([it.blob], it.name || 'shared', { type: it.blob.type || '' }));
+  const pdfs = files.filter((f) => f.type === 'application/pdf' || /\.pdf$/i.test(f.name));
+  const other = files.filter((f) => !pdfs.includes(f));
+  if (pdfs.length) await addFiles(pdfs, 'share');
+  if (other.length) { location.hash = 'notes'; await importFromShare(other); }
 }
 
 // ---------- library list clicks ----------
@@ -143,5 +163,8 @@ if ('serviceWorker' in navigator && location.protocol !== 'file:') {
 }
 
 await route();
+// Recordings interrupted by a crash are joined and queued; then anything
+// waiting to be written out carries on.
+recoverInterrupted().catch(() => 0).then(() => runQueue());
 if (new URLSearchParams(location.search).has('shared')) history.replaceState(null, '', location.pathname + location.hash);
 await drainInbox();

@@ -13,14 +13,14 @@
 //    without them the on-device voice and transcription models run on one CPU
 //    thread. The worker adds the headers to the pages it serves.
 
-const VERSION = "csreader-v1-1c276d5-202609240742";   // stamped per deploy by build/build.mjs
+const VERSION = "csreader-v1-3b61bea+-202609240801";   // stamped per deploy by build/build.mjs
 const PREFIX = 'csreader-';
 const PRECACHE = ['./', 'index.html', 'css/app.css', 'fonts/fonts.css', 'js/main.js', 'js/parse-worker.js', 'manifest.webmanifest', 'icons/icon-192.png'];
 
 // Must match app/js/db.js (build/verify.mjs checks).
 const DB_NAME = 'csreader-v1';
-const DB_VERSION = 1;
-const SCHEMA = { docs: 'id', parsed: 'id', files: 'id', inbox: 'id', kv: 'k' };
+const DB_VERSION = 2;
+const SCHEMA = { docs: 'id', parsed: 'id', files: 'id', inbox: 'id', kv: 'k', notes: 'id', recordings: 'id', chunks: 'id' };
 
 self.addEventListener('install', (e) => {
   e.waitUntil((async () => {
@@ -43,7 +43,7 @@ function openDb() {
     req.onupgradeneeded = () => {
       for (const [name, key] of Object.entries(SCHEMA)) if (!req.result.objectStoreNames.contains(name)) req.result.createObjectStore(name, { keyPath: key });
     };
-    req.onsuccess = () => resolve(req.result);
+    req.onsuccess = () => { req.result.onversionchange = () => req.result.close(); resolve(req.result); };
     req.onerror = () => reject(req.error);
   });
 }

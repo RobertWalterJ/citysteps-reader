@@ -36,6 +36,8 @@ const common = { bundle: true, format: 'esm', minify: true, target: 'es2022', le
 await build({ ...common, entryPoints: { main: join(APP, 'js', 'main.js') }, outdir: join(OUT, 'js'), splitting: true, chunkNames: 'chunk-[hash]' });
 // The parse worker carries PDF.js and its worker code in one file.
 await build({ ...common, entryPoints: { 'parse-worker': join(APP, 'js', 'parse', 'worker.js') }, outdir: join(OUT, 'js') });
+// Transcription for voice notes: Whisper base on the processor (D18).
+await build({ ...common, platform: 'browser', entryPoints: { 'stt-worker': join(APP, 'js', 'notes', 'stt-worker.js') }, outdir: join(OUT, 'js') });
 // The phone tests page (Phase 0.5): its own bundle so the reader stays small.
 await build({ ...common, entryPoints: { lab: join(APP, 'js', 'lab', 'lab.js'), 'lab-tts-worker': join(APP, 'js', 'lab', 'tts-worker.js') }, outdir: join(OUT, 'js') });
 await build({ ...common, platform: 'browser', entryPoints: { 'lab-piper-worker': join(APP, 'js', 'lab', 'piper-worker.js') }, outdir: join(OUT, 'js'), splitting: true, chunkNames: 'piper-[hash]', external: ['fs', 'path'] });  // Node-only branches in Piper's emscripten code

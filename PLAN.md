@@ -170,22 +170,23 @@ None of these would need a proxy: Anthropic, OpenAI, Groq and Google all accept 
 
 A second free option exists: CitySteps Studio's Kokoro and Whisper already run on the 4070 at home. If Tailscale is ever allowed on that laptop, the phone could hand big jobs to the PC. It stays out of scope until then.
 
-## 9. TTS and STT comparison (to be measured on the S23 FE in Phase 0.5)
+## 9. TTS and STT comparison (measured on the S23 FE, 2026-09-24)
 
-Reference points measured on Robert's laptop (i7, Intel Iris Xe, Chrome 152, isolated, 4 threads), 2026-09-23: Kokoro 8-bit on the processor **0.5x** real time; Kokoro fp32 on WebGPU **1.8x** after warm-up; Whisper base on WebGPU transcribed 4.3 s of speech in 6.8 s on its first run, word for word. The phone column below is still to fill.
+Phase 0.5 is complete. Full numbers in DECISIONS.md D15 and D18.
 
-| Option | Download | Speed on S23 | Quality | Lock screen | Offline |
-|---|---|---|---|---|---|
-| Built-in `speechSynthesis` (Google voices) | 0 | instant | fair | **no** | yes if voice installed |
-| Kokoro 8-bit, sherpa-onnx WASM | about 86 MB | *to measure* | very good | yes (rendered audio) | yes |
-| Kokoro, kokoro-js WebGPU | 86 to 325 MB | *to measure* | very good | yes | yes |
-| Piper or Kitten (fallback voice) | 25 to 60 MB | *to measure* | good | yes | yes |
-| Whisper base, Transformers.js | about 77 MB | *to measure* | good | n/a | yes |
-| Whisper small | about 249 MB | *to measure* | very good | n/a | yes |
-| Moonshine base | about 63 MB | *to measure* | good, English only | n/a | yes |
-| Web Speech recognition | 0 | live | good | n/a | **no** (Google servers), and cannot record at the same time |
+| Option | Download | Speed on the S23 FE | Verdict |
+|---|---|---|---|
+| Built-in voice (Google, en_GB) | 0 | instant | Instant fallback only: stops the moment the screen locks |
+| Kokoro 8-bit, processor | 92 MB | 0.27x real time | Out: far too slow |
+| Kokoro fp32, graphics chip | 326 MB | 0.7 to 1.3x, and the output was noise | Out: Adreno WebGPU unusable here |
+| **Piper medium voices, processor** | about 60 MB each | **2.8 to 3.0x** (Alba, Lessac, Northern English) | **Chosen neural voice** |
+| Piper high voices (Cori) | about 110 MB | 0.58x | Out |
+| Whisper tiny 8-bit, processor | about 40 MB | 4.6x | Fast fallback |
+| **Whisper base 8-bit, processor** | about 77 MB | **3.7x**, best punctuation | **Chosen transcription model** |
+| Moonshine base 8-bit, processor | about 63 MB | 4.5x | Good; kept as an option |
+| Any model on the graphics chip | | Whisper crashed the phone | Never used on this phone |
 
-Rule for the defaults: a voice must render at least twice as fast as it speaks to be the default for live listening. Anything slower is used only for "prepare for the commute".
+Lock screen: one long audio file kept playing through a full minute locked; a chain of short files stopped after about 30 s (Android froze the page). So locked listening renders each section into one long file ahead of time. Recording stops when the screen locks, so in-app recording keeps the screen awake, and long or locked sessions come in from Samsung Voice Recorder through the share sheet.
 
 ## 10. Risks
 

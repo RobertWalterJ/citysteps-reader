@@ -4,7 +4,7 @@ Read PDFs aloud on the phone, and catch the ideas they spark. A CitySteps projec
 
 The phone successor to CitySteps Studio. Everything runs on the phone. There are no accounts and no cloud services, and documents never leave the device.
 
-## What works now (v0.2, Phase 1)
+## What works now (v0.3, Phases 1 and 2)
 
 - **Add a PDF** from the file picker, or share one into the installed app from Drive, Gmail or Chrome (Android share sheet).
 - **Cleaned-up text in reading order:**
@@ -23,7 +23,16 @@ The phone successor to CitySteps Studio. Everything runs on the phone. There are
 - **Reading settings** carried over from Studio: text size, line spacing, word and letter spacing, background tint, and a night theme.
 - **Details** (title, author, year, type, tags) can be edited per document.
 
-The plan for the rest (voice notes, Kokoro voices on the lock screen, OCR, backup to GitHub) is in `PLAN.md`. The reasons behind each choice are in `DECISIONS.md`.
+- **Notes** (Phase 2):
+  - say or type a thought from anywhere, tied to the sentence being read;
+  - four kinds: Idea, Post start, Article start, Research thread;
+  - audio is saved as you speak (in 5-second pieces), then written out on the phone by Whisper;
+  - recordings from Samsung Voice Recorder can be shared in;
+  - share any note as Markdown with a citation to its passage;
+  - back up to a private GitHub repo (Obsidian-readable);
+  - bring in CitySteps Studio notes and Markdown files (IdeaBank).
+
+The plan for the rest (Piper voices and lock-screen listening, OCR, hard documents) is in `PLAN.md`. The reasons behind each choice are in `DECISIONS.md`.
 
 ## Running it on the PC
 

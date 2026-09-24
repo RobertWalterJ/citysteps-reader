@@ -19,8 +19,8 @@ const PRECACHE = ['./', 'index.html', 'css/app.css', 'fonts/fonts.css', 'js/main
 
 // Must match app/js/db.js (build/verify.mjs checks).
 const DB_NAME = 'csreader-v1';
-const DB_VERSION = 1;
-const SCHEMA = { docs: 'id', parsed: 'id', files: 'id', inbox: 'id', kv: 'k' };
+const DB_VERSION = 2;
+const SCHEMA = { docs: 'id', parsed: 'id', files: 'id', inbox: 'id', kv: 'k', notes: 'id', recordings: 'id', chunks: 'id' };
 
 self.addEventListener('install', (e) => {
   e.waitUntil((async () => {
@@ -43,7 +43,7 @@ function openDb() {
     req.onupgradeneeded = () => {
       for (const [name, key] of Object.entries(SCHEMA)) if (!req.result.objectStoreNames.contains(name)) req.result.createObjectStore(name, { keyPath: key });
     };
-    req.onsuccess = () => resolve(req.result);
+    req.onsuccess = () => { req.result.onversionchange = () => req.result.close(); resolve(req.result); };
     req.onerror = () => reject(req.error);
   });
 }

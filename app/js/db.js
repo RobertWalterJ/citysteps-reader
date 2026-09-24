@@ -6,8 +6,8 @@
 // sw.js; build/verify.mjs fails if the two drift apart.
 
 export const DB_NAME = 'csreader-v1';
-export const DB_VERSION = 1;
-const SCHEMA = { docs: 'id', parsed: 'id', files: 'id', inbox: 'id', kv: 'k' };
+export const DB_VERSION = 2;
+const SCHEMA = { docs: 'id', parsed: 'id', files: 'id', inbox: 'id', kv: 'k', notes: 'id', recordings: 'id', chunks: 'id' };
 
 let dbp = null;
 function open() {
@@ -18,7 +18,12 @@ function open() {
       const db = req.result;
       for (const [name, key] of Object.entries(SCHEMA)) if (!db.objectStoreNames.contains(name)) db.createObjectStore(name, { keyPath: key });
     };
-    req.onsuccess = () => resolve(req.result);
+    req.onsuccess = () => {
+      // A newer copy of the app (another tab, or after an update) needs the
+      // database at a higher version: let go so it is not blocked.
+      req.result.onversionchange = () => { req.result.close(); dbp = null; };
+      resolve(req.result);
+    };
     req.onerror = () => reject(req.error);
     req.onblocked = () => reject(new Error('The database is open in an older copy of the app. Close other tabs and try again.'));
   });

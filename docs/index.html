@@ -32,6 +32,10 @@
   <symbol id="i-trash" viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></symbol>
   <symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
   <symbol id="i-settings" viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></symbol>
+  <symbol id="i-mic" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></symbol>
+  <symbol id="i-note" viewBox="0 0 24 24"><path d="M5 4h14v12l-4 4H5z"/><path d="M15 20v-4h4M8 9h8M8 13h5"/></symbol>
+  <symbol id="i-book" viewBox="0 0 24 24"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z"/><path d="M4 19V5"/></symbol>
+  <symbol id="i-share" viewBox="0 0 24 24"><path d="M12 3v12M7 8l5-5 5 5M5 14v5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-5"/></symbol>
   <symbol id="i-zoom" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4M8 11h6M11 8v6"/></symbol>
 </svg>
 
@@ -41,6 +45,10 @@
     <h1 class="wordmark"><span class="lane" aria-hidden="true"></span>CitySteps Reader</h1>
     <button class="icon-btn" id="libMenuBtn" aria-label="More"><svg><use href="#i-more"/></svg></button>
   </header>
+  <nav class="tabs" aria-label="Sections of the app">
+    <a href="#" class="tab" aria-current="page"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-book"/></svg>Library</a>
+    <a href="#notes" class="tab" ><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-note"/></svg>Notes</a>
+  </nav>
   <main class="library">
     <div id="banners"></div>
     <button class="add-card" id="addBtn">
@@ -54,6 +62,56 @@
       Add a paper, a staff report or an article. It gets cleaned up once and stays on this phone.
     </div>
   </main>
+</section>
+
+<!-- Notes -->
+<section id="notesView" hidden>
+  <header class="bar">
+    <h1 class="wordmark"><span class="lane" aria-hidden="true"></span>CitySteps Reader</h1>
+    <button class="icon-btn" id="notesMenuBtn" aria-label="Import, export and backup"><svg><use href="#i-more"/></svg></button>
+  </header>
+  <nav class="tabs" aria-label="Sections of the app">
+    <a href="#" class="tab" ><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-book"/></svg>Library</a>
+    <a href="#notes" class="tab" aria-current="page"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-note"/></svg>Notes</a>
+  </nav>
+  <main class="library">
+    <div class="new-row">
+      <button class="add-card" id="recNewBtn"><span class="plus"><svg viewBox="0 0 24 24"><use href="#i-mic"/></svg></span><span><b>Say a thought</b><span>Saved as you speak, written out on the phone</span></span></button>
+      <button class="add-card quiet-card" id="typeNewBtn"><span class="plus"><svg viewBox="0 0 24 24"><use href="#i-edit"/></svg></span><span><b>Type one</b></span></button>
+    </div>
+    <div class="filters" id="noteFilters" role="group" aria-label="Show"></div>
+    <input type="search" id="noteSearch" class="search" placeholder="Search notes" aria-label="Search notes">
+    <div class="banner" id="transcribeStatus" hidden></div>
+    <ul class="doc-list" id="noteList"></ul>
+    <div class="empty" id="notesEmpty" hidden>
+      <div class="big">No notes yet</div>
+      Tap the microphone while reading, or here, and say what the passage made you think.
+    </div>
+    <input type="file" id="importInput" accept=".json,.md,.markdown,.txt,application/json,text/markdown,text/plain" multiple hidden>
+    <input type="file" id="audioInput" accept="audio/*" multiple hidden>
+  </main>
+</section>
+
+<!-- One note -->
+<section id="noteView" hidden>
+  <header class="bar">
+    <button class="icon-btn" id="noteBackBtn" aria-label="Back to notes"><svg><use href="#i-back"/></svg></button>
+    <h1 id="noteHead"></h1>
+    <button class="icon-btn" id="noteSpeakBtn" aria-label="Read this note aloud"><svg><use href="#i-speaker"/></svg></button>
+    <button class="icon-btn" id="noteMenuBtn" aria-label="More for this note"><svg><use href="#i-more"/></svg></button>
+  </header>
+  <main class="note-edit">
+    <div class="seg" id="noteType" role="group" aria-label="Kind of note"></div>
+    <textarea id="noteBody" class="note-body" placeholder="Write, or tap Say more to speak." aria-label="Note"></textarea>
+    <label class="field"><span>Tags (comma separated)</span><input type="text" id="noteTags"></label>
+    <div id="noteSources"></div>
+    <div id="noteRecs"></div>
+    <p class="saved-line" id="noteSaved" aria-live="polite"></p>
+  </main>
+  <footer class="player"><div class="row">
+    <button class="text-btn solid" id="noteRecordBtn"><svg class="btn-ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-mic"/></svg> Say more</button>
+    <button class="text-btn" id="noteShareBtn"><svg class="btn-ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-share"/></svg> Share as Markdown</button>
+  </div></footer>
 </section>
 
 <!-- Reader -->
@@ -73,16 +131,28 @@
       <button class="play" id="playBtn" aria-label="Play"><svg viewBox="0 0 24 24"><use href="#i-play"/></svg></button>
       <button class="icon-btn" id="nextBtn" aria-label="Next sentence"><svg><use href="#i-next"/></svg></button>
       <button class="icon-btn" id="pageBtn" aria-label="Show the original page"><svg><use href="#i-page"/></svg></button>
+      <button class="icon-btn mic-btn" id="micBtn" aria-label="Say a thought about this passage"><svg><use href="#i-mic"/></svg></button>
     </div>
   </footer>
 </section>
+
+<!-- Recording: a dark screen that keeps the phone awake -->
+<div class="recorder" id="recorder" role="dialog" aria-modal="true" aria-label="Recording" hidden>
+  <div class="rec-top"><span class="rec-dot" aria-hidden="true"></span>Recording</div>
+  <p class="rec-from" id="recFrom"></p>
+  <div class="meter" aria-hidden="true"><i id="recLevel"></i></div>
+  <p class="rec-saved" id="recSaved">Saving as you go.</p>
+  <div class="seg rec-types" id="recType" role="group" aria-label="Kind of note"></div>
+  <button class="rec-stop" id="recStop"><span class="sq" aria-hidden="true"></span>Stop</button>
+  <p class="rec-help">The screen stays on while you record, so the phone can go in your pocket. If the screen locks, recording pauses until you unlock it. For a long walk, record in Samsung Voice Recorder and share the file here.</p>
+</div>
 
 <div class="scrim" id="scrim" hidden></div>
 <div class="sheet" id="sheet" role="dialog" aria-modal="true" hidden></div>
 <div class="pageview" id="pageview" hidden></div>
 <div class="toast" id="toast" role="status" hidden></div>
 
-<script>window.CSREADER_BUILD={"v":"0.2.3","commit":"1c276d5","date":"2026-09-24"};</script>
+<script>window.CSREADER_BUILD={"v":"0.3.0","commit":"3b61bea+","date":"2026-09-24"};</script>
 <script type="module" src="js/main.js"></script>
 </body>
 </html>

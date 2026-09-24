@@ -178,7 +178,7 @@ document.addEventListener('visibilitychange', () => {
   const wall = (Date.now() - longStart) / 1000, at = $('lockEl').currentTime;
   logLock(`audio at ${fmt(at)} s after ${fmt(wall)} s: ${Math.abs(wall - at) < 3 || $('lockEl').ended ? 'it kept playing the whole time' : 'it stopped for about ' + fmt(wall - at) + ' s'}`);
 });
-function stopLock() { lockRunning = false; $('lockEl').pause(); speechSynthesis.cancel(); }
+function stopLock() { lockRunning = false; longStart = 0; $('lockEl').pause(); speechSynthesis.cancel(); }
 $('lockStop').onclick = () => { if (lockRunning) logLock('stopped'); stopLock(); };
 
 // ---------- 5. background recording ----------

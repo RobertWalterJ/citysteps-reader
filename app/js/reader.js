@@ -8,6 +8,8 @@ import { splitSentences } from './sentences.js';
 import { READ_BY_DEFAULT } from './parse/layout.js';
 import { openSheet, closeSheet, toast, esc, icon } from './ui.js';
 import { prefs, savePrefs, applyPrefs, prefsSheet } from './prefs.js';
+import { capture } from './notes/view.js';
+import { newNote } from './notes/store.js';
 
 const $ = (id) => document.getElementById(id);
 const LABEL = { footnote: 'Footnote', reference: 'Reference', caption: 'Caption', contents: 'Contents', other: 'Not read', formula: 'Formula' };
@@ -54,6 +56,7 @@ export async function openDoc(id) {
   player.idx = start;
   if (queue.length) { showSentence(start, queue[start], { scroll: start > 0, instant: true }); }
   else $('where').textContent = parsed.stats.textPages ? 'Nothing here is set to be read aloud.' : 'This PDF is scanned images. Text recognition comes in a later version.';
+  applyJump();
   return true;
 }
 
@@ -208,7 +211,38 @@ async function saveProgress(now = false) {
 
 function fmtSpeed(r) { return (Number.isInteger(r) ? r.toFixed(1) : String(r)) + '×'; }
 
+// The passage a note is about: the sentence being read (or tapped), with
+// enough of the document to cite it later.
+function anchorFor(seq, start, end) {
+  const b = parsed.blocks[seq];
+  const quote = (start != null ? b.text.slice(start, end) : b.text).trim();
+  return { docId: doc.id, docTitle: doc.title, authors: doc.authors?.join(', ') || '', year: doc.year || null, page: b.page, seq, start: start ?? 0, quote: quote.length > 600 ? quote.slice(0, 597) + '...' : quote };
+}
+function currentAnchor() {
+  const s = queue[player.idx];
+  return s ? anchorFor(s.seq, s.start, s.end) : anchorFor(parsed.blocks.findIndex((b) => b.text) || 0);
+}
+// Pause, record, resume (the brief).
+function sayAbout(anchor) {
+  const wasPlaying = player.playing;
+  player.pause();
+  capture({ anchor, onDone: () => { if (wasPlaying) player.play(); } });
+}
+// Opening a note's source: go to the document and put the reading position
+// on that passage.
+export let pendingJump = null;
+export function setPendingJump(a) { pendingJump = a; }
+function applyJump() {
+  if (!pendingJump || !doc || pendingJump.docId !== doc.id) return;
+  const { seq, start } = pendingJump;
+  pendingJump = null;
+  const k = queue.findIndex((q) => q.seq > seq || (q.seq === seq && q.end > (start || 0)));
+  if (k >= 0) { player.idx = k; lastUserScroll = 0; showSentence(k, queue[k], { instant: true }); }
+  else els.get(seq)?.scrollIntoView({ block: 'center' });
+}
+
 export function wireReader({ onBack }) {
+  $('micBtn').onclick = () => { speech.unlock(); sayAbout(currentAnchor()); };
   $('backBtn').onclick = onBack;
   $('playBtn').onclick = () => { speech.unlock(); player.toggle(); };
   $('nextBtn').onclick = () => player.next();
@@ -291,11 +325,18 @@ function passageSheet(seq, e) {
     <ul class="menu-list">
       <li><button data-act="here">${icon('speaker')} ${canRead ? 'Read from this sentence' : 'Read from the next passage that is read aloud'}</button></li>
       ${!canRead && b.text ? `<li><button data-act="once">${icon('play')} Read just this ${(LABEL[b.kind] || 'passage').toLowerCase()}</button></li>` : ''}
+      ${b.text ? `<li><button data-act="say">${icon('mic')} Say a thought about this</button></li>
+      <li><button data-act="write">${icon('edit')} Write a note about this</button></li>` : ''}
       <li><button data-act="page">${icon('page')} Show it on the original page</button></li>
     </ul>`, (act) => {
     closeSheet();
     if (act === 'here') startAt(seq, canRead && s ? s.start : 0);
     else if (act === 'page') openPage(b.page);
+    else if (act === 'say') sayAbout(anchorFor(seq, s?.start, s?.end));
+    else if (act === 'write') {
+      player.pause();
+      newNote({ type: 'idea', anchors: [anchorFor(seq, s?.start, s?.end)] }).then((n) => { location.hash = 'note=' + n.id; });
+    }
     else if (act === 'once') readOnce(b);
   });
 }
