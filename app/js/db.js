@@ -6,8 +6,8 @@
 // sw.js; build/verify.mjs fails if the two drift apart.
 
 export const DB_NAME = 'csreader-v1';
-export const DB_VERSION = 2;
-const SCHEMA = { docs: 'id', parsed: 'id', files: 'id', inbox: 'id', kv: 'k', notes: 'id', recordings: 'id', chunks: 'id' };
+export const DB_VERSION = 3;
+const SCHEMA = { docs: 'id', parsed: 'id', files: 'id', inbox: 'id', kv: 'k', notes: 'id', recordings: 'id', chunks: 'id', renders: 'id' };
 
 let dbp = null;
 function open() {

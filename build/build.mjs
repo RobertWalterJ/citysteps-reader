@@ -36,6 +36,9 @@ const common = { bundle: true, format: 'esm', minify: true, target: 'es2022', le
 await build({ ...common, entryPoints: { main: join(APP, 'js', 'main.js') }, outdir: join(OUT, 'js'), splitting: true, chunkNames: 'chunk-[hash]' });
 // The parse worker carries PDF.js and its worker code in one file.
 await build({ ...common, entryPoints: { 'parse-worker': join(APP, 'js', 'parse', 'worker.js') }, outdir: join(OUT, 'js') });
+// Piper voices for reading (Phase 4). Node-only branches in Piper's
+// emscripten code are left out, as for the lab worker.
+await build({ ...common, platform: 'browser', entryPoints: { 'piper-worker': join(APP, 'js', 'tts', 'piper-worker.js') }, outdir: join(OUT, 'js'), splitting: true, chunkNames: 'piper-[hash]', external: ['fs', 'path'] });
 // Transcription for voice notes: Whisper base on the processor (D18).
 await build({ ...common, platform: 'browser', entryPoints: { 'stt-worker': join(APP, 'js', 'notes', 'stt-worker.js') }, outdir: join(OUT, 'js') });
 // The phone tests page (Phase 0.5): its own bundle so the reader stays small.
@@ -78,6 +81,8 @@ const sw = readFileSync(join(APP, 'sw.js'), 'utf8').replace("'csreader-v1-dev'",
 if (sw.includes('csreader-v1-dev')) throw new Error('the service worker version was not stamped');
 writeFileSync(join(OUT, 'sw.js'), sw);
 writeFileSync(join(OUT, '.nojekyll'), '');
+// The app checks this to tell Robert a newer version is ready (updates.js).
+writeFileSync(join(OUT, 'version.json'), BUILD + '\n');
 
 // Everything the worker precaches must exist.
 const list = [...(sw.match(/PRECACHE = \[([^\]]*)\]/)?.[1] || '').matchAll(/'([^']+)'/g)].map((m) => m[1]).filter((u) => u !== './');

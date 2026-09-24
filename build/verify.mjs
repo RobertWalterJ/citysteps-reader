@@ -29,8 +29,10 @@ for (const f of src) {
     // a \b became a backspace byte through a shell heredoc).
     if (/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/.test(line)) fail(f, `${at} contains a control character`);
     // No fast repeating timers: nothing may tick or advance faster than every 30s by itself.
-    const iv = /setInterval\([^,]+,\s*(\d+)/.exec(line);
-    if (iv && +iv[1] < 30000) fail(f, `${at} has a repeating timer under 30 seconds`);
+    // The interval may be written as arithmetic ("30 * 60 * 1000").
+    const iv = /setInterval\([^,]+,\s*([\d\s*+]+)\)/.exec(line);
+    const ms = iv ? iv[1].split('+').reduce((sum, term) => sum + term.split('*').reduce((p, n) => p * Number(n.trim()), 1), 0) : null;
+    if (ms != null && ms < 30000) fail(f, `${at} has a repeating timer under 30 seconds`);
   });
   if (extname(f) === '.html' && /(href|src)="\/(?!\/)/.test(s)) fail(f, 'root-absolute URL (the site lives under a sub-path)');
   if (extname(f) === '.css' && /url\(\//.test(s)) fail(f, 'root-absolute url()');
@@ -51,6 +53,10 @@ if (/caches\.match\(/.test(swjs.replace(/\/\/.*$/gm, ''))) fail(join(ROOT, 'app'
 const pkg = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8'));
 const tj = pkg.devDependencies?.['@huggingface/transformers'];
 if (tj && tj !== '4.2.0') fail(join(ROOT, 'package.json'), `@huggingface/transformers is ${tj}, pinned to 4.2.0`);
+
+// Every release says what changed (asked for 2026-09-24: a notice on update).
+const newest = /v: '([\d.]+)'/.exec(readFileSync(join(ROOT, 'app', 'js', 'changelog.js'), 'utf8'))?.[1];
+if (newest !== pkg.version) fail(join(ROOT, 'app', 'js', 'changelog.js'), `newest entry is ${newest}, but package.json is ${pkg.version}: add what changed`);
 
 if (fails.length) { console.log('verify failed:\n  ' + fails.join('\n  ')); process.exit(1); }
 console.log(`verify: ${src.length} files follow the house rules.`);

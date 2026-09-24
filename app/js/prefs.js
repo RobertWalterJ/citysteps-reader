@@ -5,11 +5,12 @@
 
 import * as speech from './speech.js';
 import { openSheet, esc } from './ui.js';
+import { PIPER_VOICES } from './voices.js';
 
 const KEY = 'csreader.prefs';
 const DEFAULTS = {
   v: 1, size: 19, line: 1.7, letter: 0.01, word: 0.04, tint: 'paper', theme: 'auto',
-  voice: '', readFootnotes: false, readReferences: false, readCaptions: false,
+  voice: '', engine: 'piper', piperVoice: 'en_GB-alba-medium', readFootnotes: false, readReferences: false, readCaptions: false,
 };
 const TINTS = { paper: null, cream: '#F8F1DD', blue: '#ECF2F6', green: '#EDF3EA', grey: '#EFEFEB' };
 
@@ -36,9 +37,10 @@ export function applyPrefs() {
 
 export function prefsSheet({ onChange }) {
   const voices = speech.englishVoices();
-  const vopts = voices.length
-    ? voices.map((v) => `<option value="${esc(v.voiceURI)}" ${speech.currentVoice()?.voiceURI === v.voiceURI ? 'selected' : ''}>${esc(v.name)} (${esc(v.lang)})${v.localService ? '' : ' · online'}</option>`).join('')
-    : '<option>No English voice found on this phone</option>';
+  // Natural voices first (Alba is Robert's pick, D19), then the phone's own.
+  const cur = prefs.engine === 'builtin' ? 'builtin' : prefs.piperVoice;
+  const vopts = `<optgroup label="Natural voices (download once, keep going with the screen off)">${PIPER_VOICES.map(([id, name]) => `<option value="${id}" ${cur === id ? 'selected' : ''}>${esc(name)}</option>`).join('')}</optgroup>
+    <optgroup label="The phone's own voice (instant, stops when the screen locks)"><option value="builtin" ${cur === 'builtin' ? 'selected' : ''}>${esc(speech.currentVoice()?.name || 'Phone voice')}</option></optgroup>`;
   const sw = (k, label, sub) => `<label class="switch"><span>${label}${sub ? `<br><small style="color:var(--muted)">${sub}</small>` : ''}</span><input type="checkbox" data-k="${k}" ${prefs[k] ? 'checked' : ''}></label>`;
   const range = (k, label, min, max, step) => `<label class="field"><span>${label}</span><input type="range" data-k="${k}" min="${min}" max="${max}" step="${step}" value="${prefs[k]}"></label>`;
   openSheet(`
@@ -60,7 +62,7 @@ export function prefsSheet({ onChange }) {
       `<button data-act="theme" data-theme="${t}" aria-pressed="${prefs.theme === t}">${{ auto: 'Match phone', light: 'Day', dark: 'Night' }[t]}</button>`).join('')}</div></div>
     <div class="actions"><button class="text-btn" data-act="reset">Reset reading settings</button></div>`,
   (act, btn) => {
-    if (act === 'test') { speech.unlock(); speech.cancel(); speech.speak('This is how CitySteps Reader will sound with this voice.', { rate: 1 }); return; }
+    if (act === 'test') { onChange('test'); return; }
     if (act === 'tint') { prefs.tint = btn.dataset.tint; document.querySelectorAll('.swatch').forEach((s) => s.setAttribute('aria-pressed', s === btn)); }
     if (act === 'theme') { prefs.theme = btn.dataset.theme; btn.parentElement.querySelectorAll('button').forEach((s) => s.setAttribute('aria-pressed', s === btn)); }
     if (act === 'reset') {
@@ -70,7 +72,11 @@ export function prefsSheet({ onChange }) {
     savePrefs(); onChange('look');
   },
   { onOpen: (sheet) => {
-    sheet.querySelector('#voiceSel').onchange = (e) => { prefs.voice = e.target.value; speech.setVoice(prefs.voice); savePrefs(); };
+    sheet.querySelector('#voiceSel').onchange = (e) => {
+      if (e.target.value === 'builtin') prefs.engine = 'builtin';
+      else { prefs.engine = 'piper'; prefs.piperVoice = e.target.value; }
+      savePrefs(); onChange('voice');
+    };
     sheet.querySelectorAll('input[type=range]').forEach((i) => { i.oninput = () => { prefs[i.dataset.k] = +i.value; savePrefs(); onChange('look'); }; });
     sheet.querySelectorAll('input[type=checkbox]').forEach((i) => { i.onchange = () => { prefs[i.dataset.k] = i.checked; savePrefs(); onChange('skip'); }; });
   } });

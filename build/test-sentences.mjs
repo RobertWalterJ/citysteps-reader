@@ -19,6 +19,8 @@ const CASES = [
   ['Is this revitalization? Or is it gentrification! Both, perhaps.', 3],
   ['“It’s how we do work that is replicable.” She paused. Then went on.', 3],
   ['No full stop at the end', 1],
+  // Phase 4: "(n.d.)." was read as a sentence of its own.
+  ['The hub is proposed (Artscape, n.d.). It opens later.', 2],
 ];
 
 // Every non-space character must land in exactly one sentence. Phase 1: the

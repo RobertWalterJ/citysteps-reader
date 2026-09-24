@@ -11,6 +11,7 @@ import { recoverInterrupted } from './notes/store.js';
 import { runQueue } from './notes/transcribe.js';
 import { wireSheets, toast, esc, openSheet, closeSheet } from './ui.js';
 import { applyPrefs } from './prefs.js';
+import { initUpdates } from './updates.js';
 
 const $ = (id) => document.getElementById(id);
 const BUILD = window.CSREADER_BUILD || { v: 'dev', commit: 'local', date: '' };
@@ -134,34 +135,15 @@ $('libMenuBtn').onclick = async () => {
     <div class="actions"><button class="text-btn" data-act="close">Close</button></div>`, () => closeSheet());
 };
 
-// ---------- updates (pattern from Hok Gong) ----------
-function banner(html, act) {
-  const b = document.createElement('div');
-  b.className = 'banner';
-  b.innerHTML = html;
-  b.addEventListener('click', (e) => { const a = e.target.closest('[data-b]')?.dataset.b; if (a) act(a, b); });
-  $('banners').append(b);
-}
-const loadedAt = performance.now();
-function watchForUpdates(reg) {
-  const ready = () => banner('<span>A new version is ready.</span><button class="text-btn solid" data-b="reload">Reload</button><button class="text-btn" data-b="later">Not now</button>',
-    (a, b) => { if (a === 'reload') location.reload(); else b.remove(); });
-  reg.addEventListener('updatefound', () => {
-    const w = reg.installing;
-    // Pages load network-first, so an update found while this page was still
-    // loading is the code already running. Only a deploy that lands while the
-    // app is open needs a reload.
-    if (performance.now() - loadedAt < 10000) return;
-    w?.addEventListener('statechange', () => { if (w.state === 'installed' && navigator.serviceWorker.controller) ready(); });
-  });
-  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') reg.update().catch(() => {}); });
-}
-
 if ('serviceWorker' in navigator && location.protocol !== 'file:') {
-  navigator.serviceWorker.register('./sw.js', { scope: './' }).then(watchForUpdates).catch(() => {});
+  navigator.serviceWorker.register('./sw.js', { scope: './' }).then((reg) => {
+    // Pick up a new service worker when the app comes back to the screen.
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') reg.update().catch(() => {}); });
+  }).catch(() => {});
   navigator.serviceWorker.addEventListener('message', (e) => { if (e.data === 'inbox') drainInbox(); });
 }
 
+initUpdates();
 await route();
 // Recordings interrupted by a crash are joined and queued; then anything
 // waiting to be written out carries on.

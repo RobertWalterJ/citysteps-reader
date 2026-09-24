@@ -47,9 +47,12 @@ export function unlock() {
 // Android Chrome fails a speak() that follows cancel() too closely (the S23 FE
 // returned "synthesis-failed", Sept 2026), so every speak waits out a short
 // gap after the last cancel, whoever called it.
-let lastCancel = 0;
+let lastCancel = 0, delayed = 0;
 const GAP = 250;
-export function cancel() { lastCancel = Date.now(); try { speechSynthesis.cancel(); } catch { /* ignore */ } }
+// A cancel also drops a sentence still waiting out that gap; otherwise a
+// stopped voice could start talking again (found in Phase 4, when Alba took
+// over and the phone's voice spoke once more).
+export function cancel() { lastCancel = Date.now(); clearTimeout(delayed); try { speechSynthesis.cancel(); } catch { /* ignore */ } }
 
 // Speak one piece of text. Returns the utterance so the caller can tell a
 // stale onend (from a cancelled sentence) from the current one.
@@ -63,6 +66,6 @@ export function speak(text, { rate = 1, onstart, onend, onerror, onboundary } = 
   u.onerror = onerror;
   u.onboundary = onboundary;
   const wait = GAP - (Date.now() - lastCancel);
-  if (wait > 0) setTimeout(() => speechSynthesis.speak(u), wait); else speechSynthesis.speak(u);
+  if (wait > 0) delayed = setTimeout(() => speechSynthesis.speak(u), wait); else speechSynthesis.speak(u);
   return u;
 }

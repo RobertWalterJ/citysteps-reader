@@ -13,14 +13,14 @@
 //    without them the on-device voice and transcription models run on one CPU
 //    thread. The worker adds the headers to the pages it serves.
 
-const VERSION = "csreader-v1-f793f06-202609240801";   // stamped per deploy by build/build.mjs
+const VERSION = "csreader-v1-9042718+-202609240823";   // stamped per deploy by build/build.mjs
 const PREFIX = 'csreader-';
 const PRECACHE = ['./', 'index.html', 'css/app.css', 'fonts/fonts.css', 'js/main.js', 'js/parse-worker.js', 'manifest.webmanifest', 'icons/icon-192.png'];
 
 // Must match app/js/db.js (build/verify.mjs checks).
 const DB_NAME = 'csreader-v1';
-const DB_VERSION = 2;
-const SCHEMA = { docs: 'id', parsed: 'id', files: 'id', inbox: 'id', kv: 'k', notes: 'id', recordings: 'id', chunks: 'id' };
+const DB_VERSION = 3;
+const SCHEMA = { docs: 'id', parsed: 'id', files: 'id', inbox: 'id', kv: 'k', notes: 'id', recordings: 'id', chunks: 'id', renders: 'id' };
 
 self.addEventListener('install', (e) => {
   e.waitUntil((async () => {

@@ -19,8 +19,8 @@ const PRECACHE = ['./', 'index.html', 'css/app.css', 'fonts/fonts.css', 'js/main
 
 // Must match app/js/db.js (build/verify.mjs checks).
 const DB_NAME = 'csreader-v1';
-const DB_VERSION = 2;
-const SCHEMA = { docs: 'id', parsed: 'id', files: 'id', inbox: 'id', kv: 'k', notes: 'id', recordings: 'id', chunks: 'id' };
+const DB_VERSION = 3;
+const SCHEMA = { docs: 'id', parsed: 'id', files: 'id', inbox: 'id', kv: 'k', notes: 'id', recordings: 'id', chunks: 'id', renders: 'id' };
 
 self.addEventListener('install', (e) => {
   e.waitUntil((async () => {

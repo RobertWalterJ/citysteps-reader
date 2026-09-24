@@ -115,3 +115,13 @@ Newest last. Each entry states the choice, what else was considered, and why.
 - **Share target** now also takes audio (Samsung Voice Recorder) and Markdown; audio becomes a note with a queued recording.
 - **Backup** refuses a public repo outright, writes only notes changed since the last backup (plus `library.json` when the library changes), and files notes as `notes/<type>/<date>-<title>-<id>.md`.
 - **Studio** gained "Export all notes for CitySteps Reader" in its menu; Reader also accepts Studio's older single-note session file.
+
+## D20. Phase 4: Piper in the reader, screen-off listening, version and update notice (2026-09-24)
+
+- **Two voices behind one set of controls** (`voices.js`): Alba (Piper) by default, the phone's voice as the instant fallback. The first time, the phone's voice reads while Alba downloads; Alba renders the next sentence and takes over at the sentence boundary, with no gap. Verified on the PC.
+- **Live reading** renders into audio pieces that double in length (1, 2, 4... sentences, up to 12 minutes), so hand-overs become rare. One request goes to the voice worker at a time; pausing or jumping cancels queued renders (before this, a paused document's look-ahead blocked new work).
+- **Listen with the screen off** renders the next 15, 30 or 60 minutes (or to the end) into one file, compressed to Opus in an Ogg container written on the phone (WebCodecs AudioEncoder plus a small Ogg writer), with WAV as the fallback. Verified: 5 min 45 s of Alba came to 1.3 MB and decoded to exactly the rendered length. The file is kept per document, so it can be prepared at home on Wi-Fi; reopening the document offers it, and it plays in Alba's voice without loading the voice model.
+- **Lock screen** controls through Media Session: play, pause, previous and next sentence, 10-second skips, with the document and section as the title.
+- **Speed** uses the audio element's playback rate with pitch kept.
+- **PC timing varies:** Alba measured 4.4x and later 1.3x real time on the same laptop with identical code (both workers agreed), so PC numbers are for code paths only; the phone's 3.0x (D18) is the planning figure.
+- **Version number** shown as a tag in the top bar; tapping it opens What's new (with read-aloud). **Update notice:** the first open on a new version shows "Updated to v..." until closed; a version published while the app is open shows "v... is ready, reload" (the build writes `version.json`, checked on return to the screen and every 30 minutes). A notification while the app is closed would need a push server, which this $0, serverless app does not have. `verify` fails a release whose version has no changelog entry.

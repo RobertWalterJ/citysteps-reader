@@ -12,7 +12,7 @@
 // Studio's original pattern matched sentences instead, and silently dropped
 // text it could not match ("See e.g. the Plan" lost "See e.").
 const BOUND_RE = /[.!?…]+["'”’)\]]*(?=\s|$)/g;
-const ABBR = /\b(e\.g|i\.e|etc|vs|cf|al|Dr|Mr|Mrs|Ms|St|Ave|Rd|Blvd|No|Nos|Fig|Figs|Vol|pp|p|ch|ed|eds|approx|Inc|Ltd|Co|Corp|Jr|Sr|Ont|Prof|Sec|s|ss|O\.Reg|Reg|Cl)\.$/i;
+const ABBR = /\b(e\.g|i\.e|n\.d|etc|vs|cf|al|Dr|Mr|Mrs|Ms|St|Ave|Rd|Blvd|No|Nos|Fig|Figs|Vol|pp|p|ch|ed|eds|approx|Inc|Ltd|Co|Corp|Jr|Sr|Ont|Prof|Sec|s|ss|O\.Reg|Reg|Cl)\.$/i;
 const MAX = 260;
 
 export function splitSentences(text) {

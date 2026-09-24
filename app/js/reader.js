@@ -3,7 +3,7 @@
 
 import * as db from './db.js';
 import * as speech from './speech.js';
-import { Player } from './player.js';
+import { Voices, PIPER_VOICES } from './voices.js';
 import { splitSentences } from './sentences.js';
 import { READ_BY_DEFAULT } from './parse/layout.js';
 import { openSheet, closeSheet, toast, esc, icon } from './ui.js';
@@ -19,12 +19,22 @@ let doc = null, parsed = null, queue = [], els = new Map();
 let lastUserScroll = 0, saveTimer = 0, programmaticScroll = 0;
 const hasHighlights = typeof CSS !== 'undefined' && 'highlights' in CSS;
 
-const player = new Player({
+const player = new Voices({
   onSentence: (i, s) => showSentence(i, s),
   onWord: (i, w) => showWord(i, w),
   onState: (playing) => setPlayIcon(playing),
   onFinish: () => { toast('Finished. Tap play to hear it again from the top.'); player.idx = 0; },
+  onStatus: (st) => voiceStatus(st),
 });
+
+// What the Piper voice is doing, in the line above the controls.
+const voiceName = () => (PIPER_VOICES.find(([id]) => id === prefs.piperVoice)?.[1] || 'Alba').split(' (')[0];
+function voiceStatus(st) {
+  if (!doc) return;
+  if (st.state === 'downloading') $('where').textContent = `Getting ${voiceName()} ready (once): ${st.progress}% of ${st.mb} MB. The phone's voice reads meanwhile.`;
+  else if (st.state === 'ready') { const s = queue[player.idx]; if (s) showSentence(player.idx, s, { scroll: false }); }
+  else if (st.state === 'error') toast(`${voiceName()} could not start (${st.error}). Reading with the phone's voice.`);
+}
 
 export function readable(kind) {
   if (READ_BY_DEFAULT.has(kind)) return true;
@@ -40,6 +50,8 @@ export async function openDoc(id) {
   parsed = await db.get('parsed', id);
   if (!doc || !parsed) { toast('That document is not on this phone any more.'); location.hash = ''; return false; }
   $('docTitle').textContent = doc.title;
+  player.setEngine(prefs.engine, prefs.piperVoice);
+  player.piper.setMeta(doc.title, '');
   document.title = doc.title + ' · CitySteps Reader';
   render();
   buildQueue();
@@ -57,6 +69,7 @@ export async function openDoc(id) {
   if (queue.length) { showSentence(start, queue[start], { scroll: start > 0, instant: true }); }
   else $('where').textContent = parsed.stats.textPages ? 'Nothing here is set to be read aloud.' : 'This PDF is scanned images. Text recognition comes in a later version.';
   applyJump();
+  loadPrepared();
   return true;
 }
 
@@ -148,7 +161,7 @@ function rangeIn(el, start, end) {
   return r;
 }
 
-let hereEl = null;
+let hereEl = null, lastSection = null;
 function showSentence(i, s, { scroll = true, instant = false } = {}) {
   if (!s) return;
   const el = els.get(s.seq);
@@ -163,6 +176,8 @@ function showSentence(i, s, { scroll = true, instant = false } = {}) {
   const b = parsed.blocks[s.seq];
   const sec = [...parsed.sections].reverse().find((x) => x.seq <= s.seq);
   $('where').textContent = `${sec ? sec.title.slice(0, 60) + ' · ' : ''}page ${b.page}`;
+  // The lock screen shows the document and the section being read.
+  if ((sec?.title || '') !== lastSection) { lastSection = sec?.title || ''; player.piper.setMeta(doc.title, lastSection); }
   if (scroll && el && Date.now() - lastUserScroll > 5000) {
     const r = rangeIn(el, s.start, s.end)?.getBoundingClientRect() || el.getBoundingClientRect();
     const target = window.scrollY + r.top - window.innerHeight * 0.32;
@@ -260,9 +275,12 @@ export function wireReader({ onBack }) {
     openPage(page);
   };
   $('sectionsBtn').onclick = sectionsSheet;
+  $('offBtn').onclick = screenOffSheet;
   $('prefsBtn').onclick = () => prefsSheet({
     onChange: (what) => {
       applyPrefs();
+      if (what === 'voice') { player.setEngine(prefs.engine, prefs.piperVoice); if (prefs.engine === 'piper' && !player.playing) player.piper.warm(prefs.piperVoice).catch(() => {}); }
+      if (what === 'test') testVoice();
       if (what === 'skip') {
         const cur = queue[player.idx];
         buildQueue();
@@ -383,3 +401,88 @@ async function openPage(n) {
 }
 
 export { savePrefs };
+
+// ---------- listen with the screen off ----------
+// One audio file for the next stretch, because a single file keeps playing
+// with the phone locked and a chain of short ones does not (D18). Kept on the
+// phone, so it can be prepared at home on Wi-Fi and played on the train.
+
+const renderId = () => doc.id;
+function locate(seq, start) { return queue.findIndex((q) => q.seq === seq && q.start === start); }
+
+async function loadPrepared() {
+  const r = await db.get('renders', doc.id).catch(() => null);
+  if (!r || r.voiceId !== prefs.piperVoice) return;
+  const from = locate(r.fromSeq, r.fromStart), to = locate(r.toSeq, r.toStart);
+  // Only if the file still lines up with this document's sentences (skip
+  // settings may have changed since) and the reading position is inside it.
+  if (from < 0 || to - from + 1 !== r.times.length || player.idx < from || player.idx > to) return;
+  player.piper.usePrepared({ from, to, times: r.times, seconds: r.seconds, blob: r.blob, voiceId: r.voiceId, prepared: true });
+  $('where').textContent = `Ready to listen with the screen off: about ${Math.round(r.seconds / 60)} minutes prepared.`;
+}
+
+let preparing = false;
+function screenOffSheet() {
+  if (!queue.length) { toast('Nothing here is set to be read aloud.'); return; }
+  const left = queue.slice(player.idx).reduce((n, q) => n + q.text.length, 0);
+  const leftMin = Math.max(1, Math.round(left / 900));
+  const opts = [15, 30, 60].filter((m) => m < leftMin);
+  openSheet(`
+    <h2>Listen with the screen off</h2>
+    <p style="font-size:15px">${esc(voiceName())} prepares the next stretch as one audio file, starting from the sentence you are on. Then press play and lock the phone. Lock-screen controls pause and skip.</p>
+    <p style="font-size:15px;color:var(--muted)">Preparing takes about a third of the listening time, with the screen on. You can do it at home and listen later: it is kept on the phone.${prefs.engine === 'builtin' ? ' This uses a natural voice; the phone’s own voice cannot keep going with the screen locked.' : ''}</p>
+    <div class="actions" id="offChoices">
+      ${opts.map((m) => `<button class="text-btn" data-act="m${m}">${m} minutes</button>`).join('')}
+      <button class="text-btn solid" data-act="m${leftMin}">To the end (about ${leftMin} min)</button>
+    </div>
+    <div id="offProgress" style="margin-top:12px;font-size:15px"></div>`, async (act) => {
+    if (!act.startsWith('m') || preparing) return;
+    const minutes = +act.slice(1);
+    if (prefs.engine !== 'piper') { prefs.engine = 'piper'; savePrefs(); player.setEngine('piper', prefs.piperVoice); }
+    preparing = true;
+    const box = document.getElementById('offProgress');
+    document.getElementById('offChoices').hidden = true;
+    const from = player.idx;
+    player.pause();
+    let wake = null;
+    try { wake = await navigator.wakeLock?.request('screen'); } catch { /* ignore */ }
+    const say = (t) => { if (box) box.textContent = t; $('where').textContent = t; };
+    try {
+      const file = await player.piper.prepare(from, minutes, {
+        onProgress: (p) => say(p.stage === 'voice' ? `Preparing: ${Math.round(p.done * 100)}% (${p.sentences} sentences). Keep the screen on.` : 'Nearly done: making the file smaller...'),
+      });
+      if (!file) throw new Error('nothing to prepare');
+      const a = queue[file.from], b = queue[file.to];
+      await db.put('renders', { id: renderId(), voiceId: file.voiceId, fromSeq: a.seq, fromStart: a.start, toSeq: b.seq, toStart: b.start, times: file.times, seconds: file.seconds, blob: file.blob, type: file.blob.type, at: Date.now() });
+      player.piper.usePrepared(file);
+      player.idx = from;
+      const msg = `Ready: about ${Math.round(file.seconds / 60)} minutes (${Math.round(file.blob.size / 1048576 * 10) / 10} MB). Press play, then lock the phone.`;
+      say(msg);
+      toast(msg);
+    } catch (err) {
+      say('Could not prepare: ' + err.message);
+    } finally {
+      preparing = false;
+      try { await wake?.release(); } catch { /* ignore */ }
+    }
+  });
+}
+
+// "Hear this voice" in the settings: one sentence in the chosen voice.
+async function testVoice() {
+  const line = 'This is how CitySteps Reader will sound with this voice.';
+  speech.unlock();
+  if (prefs.engine === 'builtin') { speech.cancel(); speech.speak(line, { rate: 1 }); return; }
+  toast(`Getting ${voiceName()} ready (a one-time download the first time)...`);
+  try {
+    player.pause();
+    const p = player.piper;
+    await p.warm(prefs.piperVoice);
+    const w = new Audio();
+    const { pcm, rate } = await (async () => { const q = p.queue; p.queue = [{ text: line, words: [] }]; try { return await p.renderOne(0); } finally { p.queue = q; } })();
+    const { wav } = await import('./tts/audio.js');
+    w.src = URL.createObjectURL(wav(pcm, rate));
+    await w.play();
+    document.getElementById('toast').hidden = true;
+  } catch (err) { toast('That voice could not start: ' + err.message); }
+}
