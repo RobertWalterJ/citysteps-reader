@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en-CA">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#FEFDF8">
+<title>Reader phone tests</title>
+<link rel="stylesheet" href="fonts/fonts.css">
+<link rel="stylesheet" href="css/app.css">
+<style>
+  .lab { max-width: 680px; margin: 0 auto; padding: 16px 16px 80px; }
+  .lab h2 { font: 700 20px/1.25 var(--display); margin: 26px 0 6px; }
+  .lab p { margin: 0 0 10px; }
+  .lab .note { color: var(--muted); font-size: 15px; }
+  .lab .row { display: flex; flex-wrap: wrap; gap: 10px; margin: 10px 0; }
+  .lab .out { font: 13px/1.5 var(--mono); background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; white-space: pre-wrap; overflow-wrap: anywhere; min-height: 2.5em; }
+  .lab .step { display: inline-grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; background: var(--ink); color: var(--paper); font: 700 14px/1 var(--display); margin-right: 8px; vertical-align: 2px; }
+  .lab audio { width: 100%; margin-top: 8px; }
+</style>
+</head>
+<body>
+<header class="bar"><h1 class="wordmark"><span class="lane" aria-hidden="true"></span>Phone tests</h1></header>
+<main class="lab">
+  <p>Five tests that decide which voice and which transcription engine the Reader uses on this phone. Run them on Wi-Fi: tests 2 and 3 download models (roughly 100 to 350 MB each, once; the page shows the real size as it downloads). When you are done, tap <b>Copy all results</b> and paste them to Claude.</p>
+  <div class="row"><button class="text-btn solid" id="copyAll">Copy all results</button><button class="text-btn" id="shareAll">Share results</button><button class="text-btn" id="clearAll">Clear results</button></div>
+
+  <h2><span class="step">1</span>This phone</h2>
+  <div class="out" id="outDevice">Checking...</div>
+
+  <h2><span class="step">2</span>Kokoro voice speed</h2>
+  <p class="note">Renders three sentences with the Kokoro voice Studio uses (Heart) and times it. Faster than 2× real time means it can read live; slower means it renders ahead for the commute.</p>
+  <div class="row"><button class="text-btn solid" data-tts="wasm">Test on the processor (92 MB)</button><button class="text-btn" data-tts="webgpu">Test on the graphics chip (326 MB)</button></div>
+  <div class="out" id="outTts">Not run yet.</div>
+  <audio id="ttsAudio" controls hidden></audio>
+
+  <h2><span class="step">3</span>Whisper transcription speed</h2>
+  <p class="note">Record yourself talking for about 15 seconds (no rush: stop whenever you like), then transcribe it on the phone. The audio is saved first, as the app will always do.</p>
+  <div class="row"><button class="text-btn solid" id="recBtn">Start recording</button><button class="text-btn" data-stt="whisper-base" disabled>Transcribe, base model</button><button class="text-btn" data-stt="whisper-small" disabled>Transcribe, small model (bigger download)</button></div>
+  <div class="out" id="outStt">Not run yet.</div>
+
+  <h2><span class="step">4</span>Listening with the screen locked</h2>
+  <p class="note">Plays soft beeps in 15-second pieces (piece 3 has three beeps, and so on) through the lock-screen player. Start it, lock the phone, wait about three minutes, unlock and come back. The log shows whether the pieces kept changing while locked. Then try the built-in voice the same way.</p>
+  <div class="row"><button class="text-btn solid" id="lockAudio">Start pieces test</button><button class="text-btn" id="lockSpeech">Start built-in voice test</button><button class="text-btn" id="lockStop">Stop</button></div>
+  <audio id="lockEl" hidden></audio>
+  <div class="out" id="outLock">Not run yet.</div>
+
+  <h2><span class="step">5</span>Recording in the background</h2>
+  <p class="note">Starts recording, saving a piece every 5 seconds. Switch to another app or lock the phone for about a minute, then come back and stop. A gap in the log means Android paused the microphone.</p>
+  <div class="row"><button class="text-btn solid" id="bgStart">Start recording</button><button class="text-btn" id="bgStop" disabled>Stop</button></div>
+  <div class="out" id="outBg">Not run yet.</div>
+  <audio id="bgAudio" controls hidden></audio>
+</main>
+<script type="module" src="js/lab.js"></script>
+</body>
+</html>

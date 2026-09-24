@@ -1,6 +1,6 @@
 # CitySteps Reader: plan
 
-*Phase 0 output, 2026-09-23. Status: **awaiting Robert's approval.** No application code is written until this is approved.*
+*Phase 0 output, 2026-09-23. **Approved 2026-09-23.** Phase 1 (reader) built as v0.2.0; Phase 0.5 phone tests at `lab.html`, waiting for results from the phone.*
 
 ## 1. What we are building
 
@@ -15,7 +15,7 @@ It is the phone successor to **CitySteps Studio** (the desktop writing and podca
 
 | Question | Answer | Effect on the design |
 |---|---|---|
-| Phone | Samsung Galaxy S23, Android, Chrome | No iOS workarounds needed. WebGPU is available. Share sheet works. |
+| Phone | Samsung Galaxy S23 FE (SM-S711W, Snapdragon), Android 16, Chrome | No iOS workarounds needed. WebGPU is available. Share sheet works. |
 | Cloud budget | **$0, on-device only** | No Claude parsing, no cloud TTS or STT. Everything runs on the phone. See section 8 for what money would buy later. |
 | Where notes live | App, backed up to a **private GitHub repo** | Markdown files in a private repo, which can also be opened as an Obsidian vault. |
 | Day-one import | **CitySteps Studio notes library** | Studio needs a one-button "Export all notes" (small change there), then import here as Post starts. |
@@ -170,7 +170,9 @@ None of these would need a proxy: Anthropic, OpenAI, Groq and Google all accept 
 
 A second free option exists: CitySteps Studio's Kokoro and Whisper already run on the 4070 at home. If Tailscale is ever allowed on that laptop, the phone could hand big jobs to the PC. It stays out of scope until then.
 
-## 9. TTS and STT comparison (to be measured on the S23 in Phase 0.5)
+## 9. TTS and STT comparison (to be measured on the S23 FE in Phase 0.5)
+
+Reference points measured on Robert's laptop (i7, Intel Iris Xe, Chrome 152, isolated, 4 threads), 2026-09-23: Kokoro 8-bit on the processor **0.5x** real time; Kokoro fp32 on WebGPU **1.8x** after warm-up; Whisper base on WebGPU transcribed 4.3 s of speech in 6.8 s on its first run, word for word. The phone column below is still to fill.
 
 | Option | Download | Speed on S23 | Quality | Lock screen | Offline |
 |---|---|---|---|---|---|

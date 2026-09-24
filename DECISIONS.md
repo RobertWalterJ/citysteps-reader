@@ -61,3 +61,23 @@ Newest last. Each entry states the choice, what else was considered, and why.
 
 - **Chosen:** real PDFs live in the gitignored `test-fixtures/local/`. Parser tests commit expected structure (column counts, block kinds, headers found) and text hashes, never extracted text.
 - **Why:** the Pages repo is public and most of the test documents are copyrighted.
+
+## D11. PDFs in IndexedDB for now, not OPFS (2026-09-23, Phase 1)
+
+- **Chosen:** PDF files are stored as Blobs in IndexedDB beside the parsed text.
+- **Considered:** the Origin Private File System, as D4 planned.
+- **Why:** one storage API is simpler, and IndexedDB holds Blobs of this size fine. OPFS stays the plan for the voice and transcription models (Phase 2 and 4), where streaming large files matters more. Revisit if big reports show slow imports on the phone.
+
+## D12. Word cursor inverts to ink by day (2026-09-23, Phase 1)
+
+- **Chosen:** the sentence being read has a pale yellow band; the word being read is ink with paper-coloured text (day) or signal yellow (night).
+- **Considered:** Studio's look (word in signal yellow inside a paler yellow band), with and without an underline.
+- **Why:** the colour audit failed it. Two light yellows differ by only 1.24:1 in lightness and collapse under tritanopia even with an underline. Inverting keeps the word unmistakable for any colour vision.
+
+## D13. Phone is a Galaxy S23 FE (SM-S711W), not an S23 (2026-09-23)
+
+- The Canadian S23 FE runs a Snapdragon (Adreno GPU), so the WebGPU plan holds. Recorded in PLAN.md section 2.
+
+## D14. Kokoro on the processor will not read live (2026-09-23, measured on the PC)
+
+- On Robert's laptop, Kokoro 8-bit on the processor (4 threads, isolated) rendered at 0.5x real time; on the Intel graphics chip (WebGPU, fp32) at 1.8x after warm-up. A phone processor will be slower than the laptop's, so live Kokoro on the phone depends on its GPU. Phase 0.5 measures it; if the phone is below 2x, Kokoro is used only to render ahead ("prepare for the commute") and the built-in voice reads live.
