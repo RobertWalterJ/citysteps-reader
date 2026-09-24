@@ -4,5 +4,10 @@
   "private": true,
   "type": "module",
   "description": "Phone PWA: read PDFs aloud and capture ideas. Phase 0 (planning).",
-  "devDependencies": { "pdfjs-dist": "6.3.289" }
+  "devDependencies": {
+    "@huggingface/transformers": "4.2.0",
+    "esbuild": "0.28.2",
+    "kokoro-js": "1.2.1",
+    "pdfjs-dist": "6.3.289"
+  }
 }
