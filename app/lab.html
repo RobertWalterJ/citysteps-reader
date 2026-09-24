@@ -30,6 +30,19 @@
   <h2><span class="step">2</span>Neural voice speed (Piper)</h2>
   <p class="note">Kokoro is already measured on this phone: too slow on the processor, and noise on the graphics chip. Piper voices are much lighter. Each test renders three sentences on the processor and times it. Faster than 2&times; real time means it can read live.</p>
   <div class="row"><button class="text-btn solid" data-tts="en_US-lessac-medium">American voice (Lessac)</button><button class="text-btn" data-tts="en_GB-cori-high">British voice (Cori, higher quality)</button></div>
+  <div class="row"><select id="voicePick" style="font:inherit;min-height:44px;border-radius:10px;border:1px solid var(--line);padding:0 10px;background:var(--card);color:var(--ink)">
+    <option value="en_GB-alba-medium">British: Alba (Scottish, woman)</option>
+    <option value="en_GB-jenny_dioco-medium">British: Jenny (woman)</option>
+    <option value="en_GB-northern_english_male-medium">British: Northern English (man)</option>
+    <option value="en_GB-alan-medium">British: Alan (man)</option>
+    <option value="en_GB-cori-medium">British: Cori (woman, medium)</option>
+    <option value="en_US-hfc_female-medium">American: HFC (woman)</option>
+    <option value="en_US-hfc_male-medium">American: HFC (man)</option>
+    <option value="en_US-ryan-medium">American: Ryan (man)</option>
+    <option value="en_US-amy-medium">American: Amy (woman)</option>
+    <option value="en_US-joe-medium">American: Joe (man)</option>
+  </select><button class="text-btn" id="voiceTry">Hear this voice</button></div>
+  <p class="note">The sampler downloads each voice once (about 60 MB) and times it too.</p>
   <div class="out" id="outTts">Not run yet.</div>
   <audio id="ttsAudio" controls hidden></audio>
 
@@ -41,7 +54,8 @@
 
   <h2><span class="step">4</span>Listening with the screen locked</h2>
   <p class="note">Plays soft beeps in 15-second pieces (piece 3 has three beeps, and so on) through the lock-screen player. Start it, lock the phone, wait about three minutes, unlock and come back. The log shows whether the pieces kept changing while locked. Then try the built-in voice the same way.</p>
-  <div class="row"><button class="text-btn solid" id="lockAudio">Start pieces test</button><button class="text-btn" id="lockSpeech">Start built-in voice test</button><button class="text-btn" id="lockStop">Stop</button></div>
+  <div class="row"><button class="text-btn solid" id="lockAudio">Start pieces test</button><button class="text-btn" id="lockLong">Start long-file test</button><button class="text-btn" id="lockStop">Stop</button></div>
+  <p class="note">Long-file test: one 4-minute file with a beep every 15 seconds. Start it, lock the phone for about three minutes, then come back. The page compares how far the audio got with how long you were away.</p>
   <audio id="lockEl" hidden></audio>
   <div class="out" id="outLock">Not run yet.</div>
 

@@ -41,8 +41,8 @@ async function device() {
 // the first run kept a 326 MB model in memory into test 3, and the phone
 // crashed.
 let ttsWorker = null;
-document.querySelectorAll('[data-tts]').forEach((b) => b.onclick = () => {
-  const voice = b.dataset.tts;
+function runPiper(voice) {
+  // Used by the two fixed buttons and by the voice sampler.
   document.querySelectorAll('[data-tts]').forEach((x) => { x.disabled = true; });
   show('outTts', `Starting (${voice})...`);
   ttsWorker?.terminate();
@@ -62,7 +62,9 @@ document.querySelectorAll('[data-tts]').forEach((b) => b.onclick = () => {
   };
   results['piper_' + voice] = { started: now(), note: 'if this is all there is, the test crashed' }; save();
   ttsWorker.postMessage({ voiceId: voice });
-});
+}
+document.querySelectorAll('[data-tts]').forEach((b) => { b.onclick = () => runPiper(b.dataset.tts); });
+$('voiceTry').onclick = () => runPiper($('voicePick').value);
 
 // ---------- 3. Whisper ----------
 // No countdown (Robert is dyslexic: nothing on a clock by default). Start and
@@ -119,10 +121,12 @@ document.querySelectorAll('[data-stt]').forEach((b) => b.onclick = () => {
 
 // ---------- 4. lock screen ----------
 const SR = 22050;
-function beepWav(n, seconds = 15) {
+function beepWav(n, seconds = 15, every = seconds) {
   const len = SR * seconds, data = new Int16Array(len);
-  for (let b = 0; b < n; b++) {
-    const start = Math.floor(SR * (0.3 + b * 0.45)), dur = Math.floor(SR * 0.18);
+  const starts = [];
+  for (let t = 0; t < seconds; t += every) for (let b = 0; b < n; b++) starts.push(t + 0.3 + b * 0.45);
+  for (const st of starts) {
+    const start = Math.floor(SR * st), dur = Math.floor(SR * 0.18);
     for (let i = 0; i < dur && start + i < len; i++) {
       const env = Math.min(1, i / 400, (dur - i) / 400);
       data[start + i] = Math.round(Math.sin((2 * Math.PI * 660 * i) / SR) * 5000 * env);
@@ -156,28 +160,24 @@ $('lockAudio').onclick = () => {
   }
   play();
 };
-$('lockSpeech').onclick = () => {
-  stopLock(); lockKind = 'speech'; lockLog = []; lockRunning = true;
-  // First run on the S23 FE: "synthesis-failed" on sentence 1, straight after
-  // stopLock() had cancelled. Android Chrome fails a speak() that follows a
-  // cancel() too closely, so wait a moment, name a voice, and retry once.
-  let n = 1, retried = false;
-  const voice = (speechSynthesis.getVoices() || []).filter((v) => /^en[-_](CA|GB|US)/i.test(v.lang)).sort((a, b) => (b.localService ? 1 : 0) - (a.localService ? 1 : 0))[0];
-  logLock(`voice: ${voice ? voice.name + ' (' + voice.lang + ')' : 'phone default'}`);
-  const say = () => {
-    if (!lockRunning) return;
-    const u = new SpeechSynthesisUtterance(`Sentence ${n}. The built-in voice is still reading while the screen is locked, as far as it can tell.`);
-    if (voice) { u.voice = voice; u.lang = voice.lang; }
-    u.onstart = () => logLock(`sentence ${n} started`);
-    u.onend = () => { retried = false; n++; if (n > 30) { logLock('done after 30 sentences'); lockRunning = false; return; } say(); };
-    u.onerror = (e) => {
-      logLock('voice error: ' + e.error);
-      if (e.error === 'synthesis-failed' && !retried) { retried = true; setTimeout(say, 600); }
-    };
-    speechSynthesis.speak(u);
-  };
-  setTimeout(say, 350);
+// Long-file test. The pieces test (Sept 2026) kept playing for about 30 s
+// locked, then stopped: Android froze the page, so nothing could start the
+// next piece. One long file needs no code to keep going. On coming back the
+// page compares how far the audio got with how long it was away.
+let longStart = 0;
+$('lockLong').onclick = () => {
+  stopLock(); lockKind = 'long'; lockLog = []; lockRunning = true;
+  const el = $('lockEl');
+  el.src = beepWav(1, 240, 15);
+  el.onended = () => { logLock('reached the end of the 4-minute file'); lockRunning = false; };
+  el.play().then(() => { longStart = Date.now(); logLock('4-minute file playing'); }).catch((e) => logLock('could not play: ' + e.message));
+  if ('mediaSession' in navigator) navigator.mediaSession.metadata = new MediaMetadata({ title: 'Long-file test', artist: 'CitySteps Reader' });
 };
+document.addEventListener('visibilitychange', () => {
+  if (lockKind !== 'long' || !longStart || document.visibilityState !== 'visible') return;
+  const wall = (Date.now() - longStart) / 1000, at = $('lockEl').currentTime;
+  logLock(`audio at ${fmt(at)} s after ${fmt(wall)} s: ${Math.abs(wall - at) < 3 || $('lockEl').ended ? 'it kept playing the whole time' : 'it stopped for about ' + fmt(wall - at) + ' s'}`);
+});
 function stopLock() { lockRunning = false; $('lockEl').pause(); speechSynthesis.cancel(); }
 $('lockStop').onclick = () => { if (lockRunning) logLock('stopped'); stopLock(); };
 

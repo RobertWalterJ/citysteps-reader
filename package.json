@@ -1,6 +1,6 @@
 {
   "name": "citysteps-reader",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "private": true,
   "type": "module",
   "description": "Phone app: read PDFs aloud and catch the ideas they spark. CitySteps, personal.",

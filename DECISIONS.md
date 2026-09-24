@@ -97,3 +97,11 @@ Newest last. Each entry states the choice, what else was considered, and why.
 
 - **Found:** with ONNX Runtime 1.30 on the processor, every 8-bit merged decoder (Whisper tiny, base, Moonshine) failed to load: "TransposeDQWeightsForMatMulNBits ... missing required scale". On the graphics chip that optimizer path never ran, which is why the first PC test passed.
 - **Chosen:** `graphOptimizationLevel: 'basic'`. All three then transcribed a test sentence word for word.
+
+## D18. Phone results, round 2 (2026-09-24, S23 FE)
+
+- **Voice:** Piper Lessac (medium) 2.9x real time on the processor: fast enough to read live. Piper Cori (high) 0.58x: "high" voices are out; "medium" voices are the neural voice. Robert is choosing among medium voices with the sampler.
+- **Transcription:** all three models transcribed 23.5 s of his speech accurately. Whisper tiny 4.6x, Moonshine base 4.5x, Whisper base 3.7x with the best punctuation. **Chosen: Whisper base** (a 10-minute note transcribes in under 3 minutes; it handles long audio in 30 s chunks natively).
+- **Built-in voice, locked:** "interrupted" the moment the screen locked. It cannot be the lock-screen voice.
+- **Audio pieces, locked:** two pieces played locked, then playback stopped about 30 s in: Android froze the page, so nothing started the next piece. Testing one long file next (v0.2.3). If it holds, commute listening renders each section into one long file ahead of time.
+- **Recording, locked:** the microphone stopped when the screen locked (a 22 s gap) and resumed on unlock. Chunks saved before the lock were kept, so save-first works. A web app cannot record with the screen locked, so: (a) in-app recording keeps the screen awake behind a dark "recording" screen; (b) long or locked sessions are recorded in Samsung Voice Recorder and shared into Reader, which transcribes them (Phase 2 adds audio to the share target).
