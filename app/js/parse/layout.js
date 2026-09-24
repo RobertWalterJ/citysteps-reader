@@ -9,7 +9,7 @@
 // Input: pages from extract.js. Output: { blocks, sections, stats }.
 // Pure functions, no DOM, no PDF.js: runs in the worker and in Node tests.
 
-export const LAYOUT_VERSION = 3;
+export const LAYOUT_VERSION = 4;
 
 const HEAD_BAND = 0.09;          // top and bottom 9% of a page: where running headers live
 const REFS_RE = /^(\d+\.?\s*)?(references|bibliography|works cited|literature cited|sources|endnotes|notes|reference list)\s*:?$/i;
@@ -210,6 +210,18 @@ export function layout(pages) {
     for (const l of p.lines) if (edge(l, p.pg)) { const k = norm(l.text); if (k && !mine.has(k)) { mine.add(k); seen.set(k, (seen.get(k) || 0) + 1); } }
   }
   const running = new Set([...seen].filter(([, c]) => n >= 2 && c >= Math.max(2, Math.ceil(n * 0.4))).map(([k]) => k));
+  // An appendix or chapter can carry its own running header for a stretch of
+  // pages: too few to reach 40% of a long report (CPPS: "2.0 Engagement
+  // Overview" on 11 of 126 pages). The same text at the same height, near the
+  // top or bottom of three or more pages, is a running header too.
+  const place = (l, pg) => norm(l.text) + '@' + Math.round(l.y / 4);
+  const nearEdge = (l, pg) => l.y > pg.H * 0.8 || l.y < pg.H * 0.12;
+  const placed = new Map();
+  for (const p of per) {
+    const mine = new Set();
+    for (const l of p.lines) if (nearEdge(l, p.pg) && l.text.length > 2) { const k = place(l, p.pg); if (!mine.has(k)) { mine.add(k); placed.set(k, (placed.get(k) || 0) + 1); } }
+  }
+  const runningAt = new Set([...placed].filter(([, c]) => c >= 3).map(([k]) => k));
 
   // Heading sizes: distinct sizes clearly above body, ranked.
   const headSizes = [...hist.keys()].filter((s) => s >= body * 1.12).sort((a, b) => b - a);
@@ -235,7 +247,7 @@ export function layout(pages) {
     let lowestBody = Infinity;
     for (const l of p.lines) if (l.size >= body * 0.9) lowestBody = Math.min(lowestBody, l.y);
     for (const l of p.lines) {
-      if (edge(l, pg) && running.has(norm(l.text))) { stats.runningDropped++; continue; }
+      if ((edge(l, pg) && running.has(norm(l.text))) || (nearEdge(l, pg) && runningAt.has(place(l, pg)))) { stats.runningDropped++; continue; }
       if (edge(l, pg) && isPageNumber(l.text)) { stats.pageNumbersDropped++; continue; }
       l.foot = l.y < pg.H * 0.3 && l.y < lowestBody && l.size <= body * 0.88;
       kept.push(l);
@@ -287,7 +299,7 @@ export function layout(pages) {
       if (REFS_RE.test(b.text)) { inRefs = true; refLevel = b.level; b.refsHeading = true; }
       else if (inRefs && b.level <= refLevel) inRefs = false;
       afterAbstract = ABSTRACT_RE.test(b.text);
-      sections.push({ title: b.text, level: b.level, seq: b.seq });
+      sections.push({ title: b.text, level: b.level, block: b });
       continue;
     }
     if (b.kind === 'para') {
@@ -320,7 +332,8 @@ export function layout(pages) {
   // is left alone rather than guessed at.
 
   merged.forEach((b, i) => { b.seq = i; delete b.foot; delete b.y; delete b.side; });
-  for (const s of sections) s.seq = merged.findIndex((b) => b.kind === 'heading' && b.text === s.title && b.seq >= 0);
+  // Point each section at its own heading block (titles can repeat).
+  for (const s of sections) { s.seq = s.block.seq; delete s.block; }
   stats.references = merged.some((b) => b.refsHeading);
   stats.body = body;
   stats.running = [...running];

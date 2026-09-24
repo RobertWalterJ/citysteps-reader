@@ -57,7 +57,12 @@ const CASES = {
     ['126 pages parsed', r.stats.pages === 126],
     ['contents page skipped', k.contents >= 20],
     ['tables found', k.table >= 30],
-    ['page numbers dropped', r.stats.pageNumbersDropped >= 60],
+    // The appendix's own footer ("Town of Saugeen Shores – Affordable Housing
+    // ... Engagement Summary", page number on the same line) was read as 39
+    // footnotes until v4 learned running headers that last only a stretch.
+    ['running headers and page numbers dropped', r.stats.runningDropped + r.stats.pageNumbersDropped >= 350],
+    ['appendix footer is not a footnote', !r.blocks.some((b) => b.kind === 'footnote' && /Engagement Sum/.test(b.text))],
+    ['appendix running header is not a section', r.sections.filter((s) => /Engagement Overview/.test(s.title)).length <= 1],
     ['formulas not read as prose', (k.formula || 0) >= 1],
   ],
   '3-globe.pdf': (r, k) => [

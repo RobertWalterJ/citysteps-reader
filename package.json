@@ -1,13 +1,19 @@
 {
   "name": "citysteps-reader",
-  "version": "0.0.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
-  "description": "Phone PWA: read PDFs aloud and capture ideas. Phase 0 (planning).",
+  "description": "Phone app: read PDFs aloud and catch the ideas they spark. CitySteps, personal.",
   "devDependencies": {
     "@huggingface/transformers": "4.2.0",
     "esbuild": "0.28.2",
     "kokoro-js": "1.2.1",
     "pdfjs-dist": "6.3.289"
+  },
+  "scripts": {
+    "verify": "node build/verify.mjs",
+    "check": "node build/verify.mjs && node build/audit-colour.mjs && node build/test-sentences.mjs && node build/test-layout.mjs",
+    "build": "npm run check && node build/build.mjs",
+    "serve": "node build/serve.mjs"
   }
 }
