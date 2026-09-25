@@ -33,7 +33,25 @@ function ordered() {
 const posOf = (seq) => rank.get(seq) ?? seq;
 // Is sentence q at or after (seq, start) in reading order?
 const atOrAfter = (q, seq, start = 0) => posOf(q.seq) > posOf(seq) || (q.seq === seq && q.start >= start);
+// Skim mode (the brief: "read abstract, headings, conclusions first"): the
+// headings, the abstract, the first paragraph of each section, and every
+// paragraph under a conclusion-type heading.
+let skim = false, skimSet = null;
+const CONCLUDING = /\b(conclusions?|concluding|summary|in brief|key (findings|takeaways)|recommendations?|what (we heard|happens next|does this all mean)|next steps|discussion)\b/i;
+function skimBlocks() {
+  const keep = new Set();
+  let firstPending = true, concluding = false;
+  for (const b of ordered()) {
+    if (b.kind === 'heading') { keep.add(b.seq); firstPending = true; concluding = CONCLUDING.test(b.text); continue; }
+    if (b.kind === 'abstract') { keep.add(b.seq); continue; }
+    if (b.kind !== 'para') continue;
+    if (concluding || firstPending) keep.add(b.seq);
+    firstPending = false;
+  }
+  return keep;
+}
 function readableBlock(b) {
+  if (skim && skimSet && !skimSet.has(b.seq)) return false;
   if (fix.skip.includes(b.seq)) return false;
   if (fix.read.includes(b.seq)) return true;
   return readable(b.kind);
@@ -95,6 +113,7 @@ export async function openDoc(id) {
     else { doc.fix = null; db.put('docs', doc); toast('The text of this document was cleaned up again, so your order fixes were cleared.'); }
   }
   moving = null;
+  skim = false;
   render();
   buildQueue();
   const speed = await db.kvGet('speed:' + doc.docType, prefs.speed || 1);
@@ -201,6 +220,8 @@ function captionFor(b) {
 
 function buildQueue() {
   queue = [];
+  skimSet = skim ? skimBlocks() : null;
+  for (const [seq, el] of els) el.classList.toggle('skim-out', !!skimSet && !skimSet.has(seq) && parsed.blocks[seq]?.kind === 'para');
   for (const b of ordered()) {
     if (!readableBlock(b) || !b.text) continue;
     for (const s of splitSentences(b.text)) {
@@ -241,7 +262,7 @@ function showSentence(i, s, { scroll = true, instant = false } = {}) {
   }
   const b = parsed.blocks[s.seq];
   const sec = [...parsed.sections].reverse().find((x) => x.seq <= s.seq);
-  $('where').textContent = `${sec ? sec.title.slice(0, 60) + ' · ' : ''}page ${b.page}`;
+  $('where').textContent = `${skim ? 'Skimming · ' : ''}${sec ? sec.title.slice(0, 60) + ' · ' : ''}page ${b.page}`;
   // The lock screen shows the document and the section being read.
   if ((sec?.title || '') !== lastSection) { lastSection = sec?.title || ''; player.piper.setMeta(doc.title, lastSection); }
   if (scroll && el && Date.now() - lastUserScroll > 5000) {
@@ -474,6 +495,7 @@ function sectionsSheet() {
   for (const b of parsed.blocks) counts[b.kind] = (counts[b.kind] || 0) + 1;
   openSheet(`
     <h2>Sections</h2>
+    <label class="switch" style="margin-bottom:8px"><span><b>Skim</b><br><small style="color:var(--muted)">Headings, the abstract, the first paragraph of each section, and the conclusions</small></span><input type="checkbox" id="skimToggle" ${skim ? 'checked' : ''}></label>
     ${fix.skip.length || fix.read.length || fix.order ? `<div class="actions" style="margin:0 0 12px"><button class="text-btn" data-act="unfix">Undo all order fixes (${fix.skip.length + fix.read.length + (fix.order ? 1 : 0)})</button></div>` : ''}
     <ul class="sec-list"><li class="l1"><button data-act="top">Start of the document</button></li>${items}</ul>
     <p style="color:var(--muted);font-size:14px;margin-top:14px">${parsed.stats.pages} pages. Set aside from reading: ${[
@@ -482,13 +504,25 @@ function sectionsSheet() {
       parsed.stats.pageNumbersDropped && `${parsed.stats.pageNumbersDropped} page numbers`].filter(Boolean).join(', ') || 'nothing'}.</p>`, (act) => {
     closeSheet();
     if (act === 'unfix') { fix = { skip: [], read: [], order: null, v: 0 }; saveFix().then(() => reflow()); toast('Back to the order the app worked out.'); return; }
+    if (act === 'skim') return;
     const seq = act === 'top' ? 0 : +act;
     const el = els.get(seq) || $('reader').firstElementChild;
     programmaticScroll = Date.now();
     el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     const k = queue.findIndex((q) => posOf(q.seq) >= posOf(seq));
     if (k >= 0) { if (player.playing) player.play(k); else { player.idx = k; showSentence(k, queue[k], { scroll: false }); } }
-  });
+  }, { onOpen: (sheet) => {
+    sheet.querySelector('#skimToggle').onchange = (e) => {
+      skim = e.target.checked;
+      const cur = queue[player.idx];
+      buildQueue();
+      let k = cur ? queue.findIndex((q) => atOrAfter(q, cur.seq, cur.start)) : 0;
+      if (k < 0) k = 0;
+      player.setQueue(queue, k);
+      if (queue[k]) showSentence(k, queue[k], { scroll: false });
+      toast(skim ? `Skimming: ${queue.length} sentences instead of the whole document.` : 'Reading everything again.');
+    };
+  } });
 }
 
 async function openPage(n) {
@@ -535,35 +569,49 @@ function screenOffSheet() {
     </div>
     <div id="offProgress" style="margin-top:12px;font-size:15px"></div>`, async (act) => {
     if (!act.startsWith('m') || preparing) return;
-    const minutes = +act.slice(1);
-    if (prefs.engine !== 'piper') { prefs.engine = 'piper'; savePrefs(); player.setEngine('piper', prefs.piperVoice); }
-    preparing = true;
     const box = document.getElementById('offProgress');
     document.getElementById('offChoices').hidden = true;
-    const from = player.idx;
-    player.pause();
-    let wake = null;
-    try { wake = await navigator.wakeLock?.request('screen'); } catch { /* ignore */ }
     const say = (t) => { if (box) box.textContent = t; $('where').textContent = t; };
     try {
-      const file = await player.piper.prepare(from, minutes, {
-        onProgress: (p) => say(p.stage === 'voice' ? `Preparing: ${Math.round(p.done * 100)}% (${p.sentences} sentences). Keep the screen on.` : 'Nearly done: making the file smaller...'),
-      });
-      if (!file) throw new Error('nothing to prepare');
-      const a = queue[file.from], b = queue[file.to];
-      await db.put('renders', { id: renderId(), voiceId: file.voiceId, fromSeq: a.seq, fromStart: a.start, toSeq: b.seq, toStart: b.start, times: file.times, seconds: file.seconds, blob: file.blob, type: file.blob.type, at: Date.now() });
-      player.piper.usePrepared(file);
-      player.idx = from;
-      const msg = `Ready: about ${Math.round(file.seconds / 60)} minutes (${Math.round(file.blob.size / 1048576 * 10) / 10} MB). Press play, then lock the phone.`;
+      const msg = await prepareCurrent(+act.slice(1), say);
       say(msg);
       toast(msg);
-    } catch (err) {
-      say('Could not prepare: ' + err.message);
-    } finally {
-      preparing = false;
-      try { await wake?.release(); } catch { /* ignore */ }
-    }
+    } catch (err) { say('Could not prepare: ' + err.message); }
   });
+}
+
+// Prepare one screen-off file for the open document, from the reading
+// position. Used by the moon button and by the commute queue.
+async function prepareCurrent(minutes, say) {
+  if (preparing) throw new Error('already preparing');
+  if (!queue.length) throw new Error('nothing here is set to be read aloud');
+  if (prefs.engine !== 'piper') { prefs.engine = 'piper'; savePrefs(); player.setEngine('piper', prefs.piperVoice); }
+  preparing = true;
+  const from = player.idx;
+  player.pause();
+  let wake = null;
+  try { wake = await navigator.wakeLock?.request('screen'); } catch { /* ignore */ }
+  try {
+    const file = await player.piper.prepare(from, minutes, {
+      onProgress: (p) => say(p.stage === 'voice' ? `Preparing: ${Math.round(p.done * 100)}% (${p.sentences} sentences). Keep the screen on.` : 'Nearly done: making the file smaller...'),
+    });
+    if (!file) throw new Error('nothing to prepare');
+    const a = queue[file.from], b = queue[file.to];
+    await db.put('renders', { id: renderId(), voiceId: file.voiceId, fromSeq: a.seq, fromStart: a.start, toSeq: b.seq, toStart: b.start, times: file.times, seconds: file.seconds, blob: file.blob, type: file.blob.type, at: Date.now() });
+    player.piper.usePrepared(file);
+    player.idx = from;
+    return `Ready: about ${Math.round(file.seconds / 60)} minutes (${Math.round(file.blob.size / 1048576 * 10) / 10} MB). Press play, then lock the phone.`;
+  } finally {
+    preparing = false;
+    try { await wake?.release(); } catch { /* ignore */ }
+  }
+}
+
+// The commute queue: prepare several documents in turn, each from where
+// Robert left off. The reader opens each one out of sight to do it.
+export async function prepareFor(id, minutes, say) {
+  if (!(await openDoc(id))) throw new Error('not on this phone');
+  try { return await prepareCurrent(minutes, say); } finally { closeDoc(); }
 }
 
 // "Hear this voice" in the settings: one sentence in the chosen voice.

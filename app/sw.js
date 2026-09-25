@@ -52,10 +52,13 @@ async function receiveShare(request) {
   try {
     const form = await request.formData();
     const files = form.getAll('pdf').filter((f) => f && typeof f !== 'string');
+    // A link shared from Chrome arrives as url or text, not as a file.
+    const link = [form.get('url'), form.get('text')].map((x) => String(x || '')).map((x) => (x.match(/https?:\/\/\S+/) || [])[0]).find(Boolean);
     const db = await openDb();
     await new Promise((resolve, reject) => {
       const t = db.transaction('inbox', 'readwrite');
       for (const f of files) t.objectStore('inbox').put({ id: Date.now() + '-' + Math.random().toString(36).slice(2), name: f.name, blob: f });
+      if (!files.length && link) t.objectStore('inbox').put({ id: Date.now() + '-link', link });
       t.oncomplete = resolve;
       t.onerror = () => reject(t.error);
     });

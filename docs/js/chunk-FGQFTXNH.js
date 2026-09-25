@@ -1,4 +1,4 @@
-import{a as h,b as n}from"./chunk-FO7DU3ZN.js";import{a as u,b}from"./chunk-34CTSXCL.js";import"./chunk-JVHWUGXG.js";u.workerSrc=new URL("./pdf.worker.min.mjs",import.meta.url).href;var c={blob:null,pdf:null,task:null},l=1;async function $(p,m,d,f){let e=document.getElementById("pageview");if(e.innerHTML=`
+import{a as u,b}from"./chunk-34CTSXCL.js";import{a as h,b as n}from"./chunk-FO7DU3ZN.js";import"./chunk-JVHWUGXG.js";u.workerSrc=new URL("./pdf.worker.min.mjs",import.meta.url).href;var c={blob:null,pdf:null,task:null},l=1;async function $(p,m,d,f){let e=document.getElementById("pageview");if(e.innerHTML=`
     <header class="bar">
       <button class="icon-btn" data-pv="close" aria-label="Close">${n("close")}</button>
       <h1>${h(f)}</h1>

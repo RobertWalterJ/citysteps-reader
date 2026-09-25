@@ -4,6 +4,16 @@
 
 export const CHANGES = [
   {
+    v: '0.6.0', date: '2026-09-25',
+    items: [
+      'Search: a new tab searches every document and note on the phone, and opens right at the passage.',
+      'Skim: in Sections, switch on Skim to hear just the headings, the abstract, the first paragraph of each section and the conclusions.',
+      'Prepare several for the commute: tick documents in the library menu and each gets a screen-off file from where you left off.',
+      'Add a PDF from a link, or share a link to the app from Chrome. arXiv works directly; for sites that refuse, the app shows the two-tap way in.',
+      'Storage on this phone: see what is using space and clear prepared audio, voices and models safely.',
+    ],
+  },
+  {
     v: '0.5.0', date: '2026-09-25',
     items: [
       'Scanned pages are read: text recognition runs on the phone in the background, and the pages become readable like any other.',

@@ -4,7 +4,7 @@ Read PDFs aloud on the phone, and catch the ideas they spark. A CitySteps projec
 
 The phone successor to CitySteps Studio. Everything runs on the phone. There are no accounts and no cloud services, and documents never leave the device.
 
-## What works now (v0.5, Phases 1 to 4)
+## What works now (v0.6, all five phases)
 
 - **Add a PDF** from the file picker, or share one into the installed app from Drive, Gmail or Chrome (Android share sheet).
 - **Cleaned-up text in reading order:**
@@ -36,7 +36,9 @@ The phone successor to CitySteps Studio. Everything runs on the phone. There are
 - **Hard documents** (Phase 3): scanned pages read by text recognition on the phone; figures and tables shown as pictures with their captions; fix the reading order by tapping.
 - **Version tag** in the top bar with What's new, and a notice when the app updates.
 
-What is left is in `PLAN.md` (Phase 5 polish). The reasons behind each choice are in `DECISIONS.md`.
+- **Polish** (Phase 5): search across everything, skim mode, prepare several for the commute, add a PDF from a link, and a storage manager.
+
+All five phases of `PLAN.md` are built. What is still untested on the phone is listed in `DECISIONS.md`. The reasons behind each choice are in `DECISIONS.md`.
 
 ## Running it on the PC
 

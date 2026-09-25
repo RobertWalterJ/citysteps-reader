@@ -262,7 +262,11 @@ export class PiperPlayer {
   async prepare(from, minutes, { onProgress } = {}) {
     await this.warm();
     const target = minutes * 60;
-    const p = await this.#build(from, { count: 100000, maxSec: target, gen: 'keep', onProgress: (sec, n) => onProgress?.({ stage: 'voice', done: Math.min(1, sec / target), sentences: n }) });
+    // Progress is measured against what will actually be read: the chosen
+    // length, or less if the document ends first (about 14 characters a second).
+    const left = this.queue.slice(from).reduce((n, q) => n + q.text.length, 0) / 14;
+    const goal = Math.max(1, Math.min(target, left));
+    const p = await this.#build(from, { count: 100000, maxSec: target, gen: 'keep', onProgress: (sec, n) => onProgress?.({ stage: 'voice', done: Math.min(0.99, sec / goal), sentences: n }) });
     if (!p) return null;
     onProgress?.({ stage: 'compress', done: 0 });
     const blob = (await oggOpus(p.pcm, p.rate, (d) => onProgress?.({ stage: 'compress', done: d })).catch(() => null)) || wav(p.pcm, p.rate);

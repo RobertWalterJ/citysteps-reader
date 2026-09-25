@@ -134,3 +134,13 @@ Newest last. Each entry states the choice, what else was considered, and why.
 - **Picture cards:** tables and figures show a crop of the page, drawn only as the card nears the screen; a figure picks up the caption next to it, with a button to hear it. Verified by saving the crops (Stark's Table 1 image, the inclusionary zoning table).
 - **Fix the order:** per document, skip a block, read a quiet one, or move a block after another; stored against the parse version, and cleared with a notice if the document is re-parsed. Reading order uses positions in the fixed order everywhere (resume, read from here, sections, jumps to a note's passage).
 - **Not done:** separating articles on a multi-article newspaper page automatically (the fix-the-order tools are the answer for now); vector maps are not detected as figures unless they are images.
+
+## D22. Phase 5: search, skim, commute queue, links, storage (2026-09-25)
+
+- **Search** scans the parsed text and notes already on the phone (no index to keep in step): every word must appear, case and accents ignored; body text ranks before contents lines, references and footnotes (the CPPS contents page otherwise topped every search). A hit opens the reader on that passage.
+- **Skim** reads headings, the abstract, the first paragraph of each section, and everything under a concluding heading (conclusion, summary, in brief, recommendations, key findings, what we heard, next steps). Stark: 41 sentences.
+- **Commute queue** prepares screen-off files for several documents in turn, each from its reading position, by opening each one out of sight and using the same code as the moon button. Progress is measured against what will actually be read.
+- **Links:** a direct fetch works where the site allows it (arXiv does; an arXiv abstract link is turned into its PDF link); government sites mostly refuse, and the app says how to get the file in with two taps rather than failing. A link shared from Chrome's share menu arrives through the share target. A proxy was not added ($0, no server, D2/D3).
+- **Storage manager** reports PDFs, prepared audio, recordings, Piper voices (OPFS "piper"), Whisper (only this app's files in the shared "transformers-cache") and Tesseract's English data, and clears only this app's entries, because the origin is shared with Robert's other apps.
+- **Speed on long reports** was measured before changing anything: the 126-page CPPS report (1,451 blocks) opens in 49 ms on the PC; nothing needed.
+- **Also:** all-caps words broken across lines rejoin ("LAN-" + "GUAGE"); layout v6.

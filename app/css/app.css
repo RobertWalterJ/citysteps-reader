@@ -342,3 +342,15 @@ button { font: inherit; color: inherit; }
 .reader .b.fixed-skip::before { content: attr(data-fix); display: inline-block; margin-right: 8px; padding: 0 6px; border-radius: 6px; background: var(--chip); color: var(--ink); font: 500 11px/1.7 var(--mono); text-transform: uppercase; letter-spacing: 0.03em; vertical-align: 1px; }
 .reader .fixed-moved { box-shadow: -10px 0 0 -7px var(--muted); }
 .reader .moving { outline: 3px dashed var(--signal-deep); outline-offset: 4px; border-radius: 4px; }
+
+/* ---------- search ---------- */
+.hit-list { list-style: none; margin: 8px 0 0; padding: 0; grid-column: 1 / -1; }
+.hit-list button { width: 100%; text-align: left; border: 0; border-top: 1px solid var(--line); background: none; padding: 10px 4px; min-height: 48px; font-size: 15px; line-height: 1.45; cursor: pointer; }
+.hit-list .more { color: var(--muted); font-size: 14px; padding: 6px 4px; }
+mark { background: var(--hl-sent); color: var(--ink); border-radius: 2px; padding: 0 1px; }
+.reader .b.skim-out { opacity: 0.45; }
+.link-btn { display: inline-flex; align-items: center; gap: 8px; margin: -6px 0 18px; }
+.storage-list li { border-bottom: 1px solid var(--line); padding: 8px 0; }
+.st-row { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; }
+.st-size { font: 600 14px/1 var(--mono); white-space: nowrap; }
+.storage-list .text-btn { margin-top: 6px; }

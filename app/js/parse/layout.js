@@ -9,7 +9,7 @@
 // Input: pages from extract.js. Output: { blocks, sections, stats }.
 // Pure functions, no DOM, no PDF.js: runs in the worker and in Node tests.
 
-export const LAYOUT_VERSION = 5;
+export const LAYOUT_VERSION = 6;
 
 const HEAD_BAND = 0.09;          // top and bottom 9% of a page: where running headers live
 const REFS_RE = /^(\d+\.?\s*)?(references|bibliography|works cited|literature cited|sources|endnotes|notes|reference list)\s*:?$/i;
@@ -416,6 +416,8 @@ function add(para, l) {
 function joinText(a, b) {
   // "harm-" + "less" joins; "Weston-" + "Mount" keeps its hyphen.
   if (/[A-Za-z]-$/.test(a) && /^[a-z]/.test(b)) return a.slice(0, -1) + b;
+  // The same break in capitals ("LAN-" / "GUAGE" in an all-caps title).
+  if (/[A-Z]{2}-$/.test(a) && /^[A-Z]{2}/.test(b)) return a.slice(0, -1) + b;
   if (/[A-Za-z]-$/.test(a)) return a + b;
   return a + ' ' + b;
 }

@@ -13,7 +13,7 @@
 //    without them the on-device voice and transcription models run on one CPU
 //    thread. The worker adds the headers to the pages it serves.
 
-const VERSION = "csreader-v1-64e49cf-202609251404";   // stamped per deploy by build/build.mjs
+const VERSION = "csreader-v1-2bc2edc+-202609251550";   // stamped per deploy by build/build.mjs
 const PREFIX = 'csreader-';
 const PRECACHE = ['./', 'index.html', 'css/app.css', 'fonts/fonts.css', 'js/main.js', 'js/parse-worker.js', 'manifest.webmanifest', 'icons/icon-192.png'];
 
@@ -52,10 +52,13 @@ async function receiveShare(request) {
   try {
     const form = await request.formData();
     const files = form.getAll('pdf').filter((f) => f && typeof f !== 'string');
+    // A link shared from Chrome arrives as url or text, not as a file.
+    const link = [form.get('url'), form.get('text')].map((x) => String(x || '')).map((x) => (x.match(/https?:\/\/\S+/) || [])[0]).find(Boolean);
     const db = await openDb();
     await new Promise((resolve, reject) => {
       const t = db.transaction('inbox', 'readwrite');
       for (const f of files) t.objectStore('inbox').put({ id: Date.now() + '-' + Math.random().toString(36).slice(2), name: f.name, blob: f });
+      if (!files.length && link) t.objectStore('inbox').put({ id: Date.now() + '-link', link });
       t.oncomplete = resolve;
       t.onerror = () => reject(t.error);
     });

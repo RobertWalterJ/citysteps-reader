@@ -33,7 +33,7 @@ mkdirSync(join(OUT, 'js'), { recursive: true });
 const common = { bundle: true, format: 'esm', minify: true, target: 'es2022', legalComments: 'none', logLevel: 'warning' };
 // The app, with the page renderer split into its own chunk (loaded only when
 // "Show the original page" is used).
-await build({ ...common, entryPoints: { main: join(APP, 'js', 'main.js') }, outdir: join(OUT, 'js'), splitting: true, chunkNames: 'chunk-[hash]' });
+await build({ ...common, entryPoints: { main: join(APP, 'js', 'main.js') }, outdir: join(OUT, 'js'), splitting: true, chunkNames: 'chunk-[hash]', external: ['fs', 'path'] });  // storage manager lists Piper voices
 // The parse worker carries PDF.js and its worker code in one file.
 await build({ ...common, entryPoints: { 'parse-worker': join(APP, 'js', 'parse', 'worker.js') }, outdir: join(OUT, 'js') });
 // Piper voices for reading (Phase 4). Node-only branches in Piper's
