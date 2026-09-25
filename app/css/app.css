@@ -329,3 +329,16 @@ button { font: inherit; color: inherit; }
 .notice-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-family: var(--display); font-size: 17px; }
 .notice ul { margin: 6px 0 10px; padding-left: 20px; }
 .notice p { margin: 6px 0 10px; }
+
+/* ---------- figure and table cards with a picture ---------- */
+.card-block.has-pic { flex-direction: column; align-items: stretch; padding: 10px; }
+.card-row { display: flex; align-items: center; gap: 12px; }
+.crop { min-height: 120px; border-radius: 8px; background: var(--chip); display: grid; place-items: center; overflow: hidden; margin-bottom: 10px; color: var(--muted); font-size: 14px; }
+.crop img { display: block; width: 100%; height: auto; background: #FFFFFF; }
+.crop.ready { min-height: 0; background: #FFFFFF; }
+
+/* ---------- fixed order ---------- */
+.reader .b.fixed-skip { opacity: 0.55; }
+.reader .b.fixed-skip::before { content: attr(data-fix); display: inline-block; margin-right: 8px; padding: 0 6px; border-radius: 6px; background: var(--chip); color: var(--ink); font: 500 11px/1.7 var(--mono); text-transform: uppercase; letter-spacing: 0.03em; vertical-align: 1px; }
+.reader .fixed-moved { box-shadow: -10px 0 0 -7px var(--muted); }
+.reader .moving { outline: 3px dashed var(--signal-deep); outline-offset: 4px; border-radius: 4px; }

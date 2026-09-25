@@ -36,3 +36,10 @@ Robert's personal phone app for reading PDFs aloud and capturing ideas. Read `PL
 - Pinned versions: pdfjs-dist 6.3.x; Transformers.js 4.2.0 (4.3.0 breaks Whisper on WebGPU). Check current versions before upgrading.
 - Copyrighted test PDFs never get committed. See `test-fixtures/README.md`.
 - Verify on the real user path (the phone, real PDFs) and say plainly what was not verified.
+
+## Editing gotchas (learned the hard way)
+
+- Files must stay LF. The Edit tool on Windows can leave CRLF, which breaks multi-line string matching in scripted edits; `.gitattributes` normalises on commit.
+- Never put regex or `\n` inside a Bash heredoc that feeds Python: `\b` became a backspace byte and `'\n'` became a real line break. Write the edit script to a file with the Write tool, or use Edit.
+- The test browser pane is hidden: requestAnimationFrame and IntersectionObserver do not fire there. PDF.js page renders use `intent: 'print'` so OCR and crops work regardless; in tests, stub IntersectionObserver.
+- Release rule: bump `package.json` and add a `changelog.js` entry together (`verify` fails otherwise); the app shows "Updated to v..." from it.

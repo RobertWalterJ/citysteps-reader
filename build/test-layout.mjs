@@ -48,6 +48,8 @@ const CASES = {
   ],
   '2a-memo.pdf': (r, k) => [
     ['text found', k.para >= 10],
+    // Phase 3: images become picture cards (the tree photo on page 2).
+    ['photo becomes a figure card', r.blocks.some((b) => b.kind === 'figure' && b.page === 2)],
   ],
   '2b-iz-table.pdf': (r, k) => [
     ['tables become table blocks', k.table >= 4],
@@ -64,6 +66,10 @@ const CASES = {
     ['appendix footer is not a footnote', !r.blocks.some((b) => b.kind === 'footnote' && /Engagement Sum/.test(b.text))],
     ['appendix running header is not a section', r.sections.filter((s) => /Engagement Overview/.test(s.title)).length <= 1],
     ['formulas not read as prose', (k.formula || 0) >= 1],
+    // Pie charts pasted as images carry their percentage labels on top: those
+    // belong to the figure, not to the prose read aloud.
+    ['chart images become figures', (k.figure || 0) >= 5],
+    ['chart percentages are not read as prose', !r.blocks.some((b) => b.kind === 'para' && /^(\d+(\.\d)?% ){4,}/.test(b.text))],
   ],
   '3-globe.pdf': (r, k) => [
     ['browser print header and footer dropped', r.stats.runningDropped >= 8],

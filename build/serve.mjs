@@ -31,6 +31,16 @@ const TYPES = {
 };
 
 async function handle(req, res) {
+  // Local testing only: save an image the page made (a figure crop, say) so
+  // it can be looked at. Written into the gitignored fixtures folder.
+  if (req.method === 'POST' && req.url.startsWith('/__save/')) {
+    const name = (req.url.slice(8).match(/^[\w.-]+\.png$/) || [])[0];
+    const chunks = [];
+    for await (const c of req) chunks.push(c);
+    if (name) (await import('node:fs')).writeFileSync(join(ROOT, 'test-fixtures', 'local', name), Buffer.concat(chunks));
+    res.writeHead(name ? 204 : 400); res.end();
+    return;
+  }
   const path = decodeURIComponent(new URL(req.url, 'http://x').pathname);
   const rel = normalize(path === '/' ? 'index.html' : path.slice(1)).replace(/^(\.\.[/\\])+/, '');
   const headers = { 'cache-control': 'no-store', 'cross-origin-opener-policy': 'same-origin', 'cross-origin-embedder-policy': 'credentialless' };

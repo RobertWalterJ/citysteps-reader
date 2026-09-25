@@ -4,7 +4,7 @@ Read PDFs aloud on the phone, and catch the ideas they spark. A CitySteps projec
 
 The phone successor to CitySteps Studio. Everything runs on the phone. There are no accounts and no cloud services, and documents never leave the device.
 
-## What works now (v0.3, Phases 1 and 2)
+## What works now (v0.5, Phases 1 to 4)
 
 - **Add a PDF** from the file picker, or share one into the installed app from Drive, Gmail or Chrome (Android share sheet).
 - **Cleaned-up text in reading order:**
@@ -32,7 +32,11 @@ The phone successor to CitySteps Studio. Everything runs on the phone. There are
   - back up to a private GitHub repo (Obsidian-readable);
   - bring in CitySteps Studio notes and Markdown files (IdeaBank).
 
-The plan for the rest (Piper voices and lock-screen listening, OCR, hard documents) is in `PLAN.md`. The reasons behind each choice are in `DECISIONS.md`.
+- **Natural voices** (Phase 4): Alba reads by default; listen with the screen off from one prepared audio file; lock-screen controls.
+- **Hard documents** (Phase 3): scanned pages read by text recognition on the phone; figures and tables shown as pictures with their captions; fix the reading order by tapping.
+- **Version tag** in the top bar with What's new, and a notice when the app updates.
+
+What is left is in `PLAN.md` (Phase 5 polish). The reasons behind each choice are in `DECISIONS.md`.
 
 ## Running it on the PC
 

@@ -29,11 +29,11 @@ function getWorker() {
   return worker;
 }
 
-function parse(buf, onProgress) {
+function parse(buf, onProgress, ocr = null) {
   const id = ++seq;
   return new Promise((resolve, reject) => {
     pending.set(id, { resolve, reject, onProgress });
-    getWorker().postMessage({ id, buf }, []);   // copy, not transfer: the caller keeps its bytes
+    getWorker().postMessage({ id, buf, ocr }, []);   // copy, not transfer: the caller keeps its bytes
   });
 }
 
@@ -113,9 +113,12 @@ async function saveParse(doc, r, name) {
     doc.docType = guessType(r, name);
   }
   const scanOnly = r.stats.textPages === 0;
+  const ocrN = r.stats.ocrPages?.length || 0;
   doc.parse = {
-    status: 'ready', method: scanOnly ? 'scan' : 'heuristic', version: r.layoutVersion,
+    status: 'ready', method: scanOnly ? 'scan' : ocrN ? 'ocr' : 'heuristic', version: r.layoutVersion,
+    scanPages: r.stats.scanPages, ocrPages: r.stats.ocrPages || [],
     warnings: [
+      ...(ocrN ? [`${ocrN} scanned page${ocrN > 1 ? 's' : ''} read by text recognition`] : []),
       ...(r.stats.scanPages.length ? [`${r.stats.scanPages.length} scanned page${r.stats.scanPages.length > 1 ? 's' : ''} with no text yet`] : []),
       ...(r.stats.tables ? [`${r.stats.tables} table${r.stats.tables > 1 ? 's' : ''} shown as cards`] : []),
     ],
@@ -129,7 +132,8 @@ async function saveParse(doc, r, name) {
 export async function reparse(doc, onProgress) {
   const f = await db.get('files', doc.id);
   if (!f) throw new Error('The original PDF is no longer on this phone. Add it again.');
-  const r = await parse(await f.blob.arrayBuffer(), onProgress);
+  const ocr = (await db.kvGet('ocr:' + doc.id, null))?.pages || null;
+  const r = await parse(await f.blob.arrayBuffer(), onProgress, ocr);
   return saveParse(doc, r, f.name);
 }
 

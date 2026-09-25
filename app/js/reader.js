@@ -12,10 +12,46 @@ import { capture } from './notes/view.js';
 import { newNote } from './notes/store.js';
 
 const $ = (id) => document.getElementById(id);
-const LABEL = { footnote: 'Footnote', reference: 'Reference', caption: 'Caption', contents: 'Contents', other: 'Not read', formula: 'Formula' };
+const LABEL = { footnote: 'Footnote', reference: 'Reference', caption: 'Caption', contents: 'Contents', other: 'Not read', formula: 'Formula', numbers: 'Numbers' };
 const SPEEDS = [0.8, 0.9, 1, 1.1, 1.25, 1.5, 1.75];
 
 let doc = null, parsed = null, queue = [], els = new Map();
+
+// ---------- fixing the order (Phase 3) ----------
+// Robert can skip a block, have a quiet one read, or move a block after
+// another; saved on the document (doc.fix) against this parse of it. Reading
+// order is then the fixed order, so every "is this after that" question
+// compares positions in it (rank), not block numbers.
+let fix = { skip: [], read: [], order: null, v: 0 };
+let rank = new Map();
+let moving = null;             // block being moved, waiting for a target tap
+function ordered() {
+  if (!fix.order) return parsed.blocks;
+  const seen = new Set(fix.order);
+  return [...fix.order.map((i) => parsed.blocks[i]).filter(Boolean), ...parsed.blocks.filter((b) => !seen.has(b.seq))];
+}
+const posOf = (seq) => rank.get(seq) ?? seq;
+// Is sentence q at or after (seq, start) in reading order?
+const atOrAfter = (q, seq, start = 0) => posOf(q.seq) > posOf(seq) || (q.seq === seq && q.start >= start);
+function readableBlock(b) {
+  if (fix.skip.includes(b.seq)) return false;
+  if (fix.read.includes(b.seq)) return true;
+  return readable(b.kind);
+}
+async function saveFix() {
+  fix.v = parsed.layoutVersion;
+  doc.fix = fix.skip.length || fix.read.length || fix.order ? fix : null;
+  await db.put('docs', doc);
+}
+function reflow(keepAt) {
+  // Re-render and rebuild the queue, keeping the reading position.
+  const cur = keepAt || queue[player.idx];
+  render();
+  buildQueue();
+  const k = cur ? queue.findIndex((q) => atOrAfter(q, cur.seq, cur.start)) : 0;
+  player.setQueue(queue, k < 0 ? 0 : k);
+  if (queue[k]) showSentence(k, queue[k], { scroll: false });
+}
 let lastUserScroll = 0, saveTimer = 0, programmaticScroll = 0;
 const hasHighlights = typeof CSS !== 'undefined' && 'highlights' in CSS;
 
@@ -53,6 +89,12 @@ export async function openDoc(id) {
   player.setEngine(prefs.engine, prefs.piperVoice);
   player.piper.setMeta(doc.title, '');
   document.title = doc.title + ' · CitySteps Reader';
+  fix = { skip: [], read: [], order: null, v: 0 };
+  if (doc.fix) {
+    if (doc.fix.v === parsed.layoutVersion) fix = doc.fix;
+    else { doc.fix = null; db.put('docs', doc); toast('The text of this document was cleaned up again, so your order fixes were cleared.'); }
+  }
+  moving = null;
   render();
   buildQueue();
   const speed = await db.kvGet('speed:' + doc.docType, prefs.speed || 1);
@@ -61,13 +103,13 @@ export async function openDoc(id) {
   // Resume where Robert left off.
   let start = 0;
   if (doc.progress) {
-    const k = queue.findIndex((q) => q.seq > doc.progress.seq || (q.seq === doc.progress.seq && q.start >= doc.progress.start));
+    const k = queue.findIndex((q) => atOrAfter(q, doc.progress.seq, doc.progress.start));
     start = k < 0 ? 0 : k;
   }
   player.queue = queue;
   player.idx = start;
   if (queue.length) { showSentence(start, queue[start], { scroll: start > 0, instant: true }); }
-  else $('where').textContent = parsed.stats.textPages ? 'Nothing here is set to be read aloud.' : 'This PDF is scanned images. Text recognition comes in a later version.';
+  else $('where').textContent = parsed.stats.textPages ? 'Nothing here is set to be read aloud.' : (parsed.blocks.some((b) => b.kind === 'scan' && !b.tried) ? 'This PDF is scanned images. Its text is being read in the background; this page updates when it is ready.' : 'No readable text was found in this scan.');
   applyJump();
   loadPrepared();
   return true;
@@ -84,14 +126,16 @@ function render() {
   const root = $('reader');
   root.textContent = '';
   els = new Map();
+  const list = ordered();
+  rank = new Map(list.map((b, i) => [b.seq, i]));
   let lastPage = 0;
   let contents = null;
   const frag = document.createDocumentFragment();
-  for (const b of parsed.blocks) {
+  for (const b of list) {
     if (b.page !== lastPage && b.page > 1 && lastPage) {
       const m = document.createElement('div');
       m.className = 'page-mark';
-      m.textContent = 'PAGE ' + b.page;
+      m.textContent = 'PAGE ' + b.page + (parsed.stats.ocrPages?.includes(b.page) ? ' · READ FROM A SCAN' : '');
       m.dataset.page = b.page;
       frag.append(m);
     }
@@ -111,13 +155,20 @@ function render() {
     }
     contents = null;
     let el;
-    if (b.kind === 'table' || b.kind === 'scan') {
+    if (b.kind === 'table' || b.kind === 'scan' || b.kind === 'figure') {
       el = document.createElement('div');
-      el.className = 'card-block';
-      const isTable = b.kind === 'table';
-      el.innerHTML = `<span class="ico">${icon(isTable ? 'table' : 'scan')}</span>
-        <span class="txt"><b>${isTable ? 'Table' : 'Scanned page'}</b><span>Page ${b.page}. ${isTable ? 'Not read aloud. Open the page to see it as laid out.' : 'No text layer yet. Text recognition comes in a later version.'}</span></span>
-        <button class="text-btn" data-page="${b.page}">View</button>`;
+      const cap = b.kind === 'scan' ? null : captionFor(b);
+      const title = { table: 'Table', figure: 'Figure', scan: 'Scanned page' }[b.kind];
+      const note = b.kind === 'scan'
+        ? (b.tried ? 'No readable text found (it may be a photo or a map).' : 'Reading its text in the background.')
+        : cap ? cap.text : 'Not read aloud.';
+      // Tables and figures show a picture of themselves, cut from the page.
+      const pic = b.kind === 'scan' ? '' : `<div class="crop" data-seq="${b.seq}" data-page="${b.page}" data-box='${JSON.stringify(b.bbox)}' data-alt="${esc(title + ' on page ' + b.page + (cap ? ': ' + cap.text.slice(0, 120) : ''))}"></div>`;
+      el.className = 'card-block' + (pic ? ' has-pic' : '');
+      el.innerHTML = `${pic}<div class="card-row"><span class="ico">${icon(b.kind === 'figure' ? 'image' : b.kind === 'table' ? 'table' : 'scan')}</span>
+        <span class="txt"><b>${title} · page ${b.page}</b><span>${esc(note.length > 220 ? note.slice(0, 217) + '...' : note)}</span></span>
+        ${cap ? `<button class="icon-btn small" data-cap="${cap.seq}" aria-label="Read the caption aloud">${icon('speaker')}</button>` : ''}
+        <button class="text-btn" data-page="${b.page}">View</button></div>`;
     } else {
       const tag = b.kind === 'heading' ? 'h' + Math.min(4, (b.level || 3) + 1) : 'p';
       el = document.createElement(tag);
@@ -126,17 +177,32 @@ function render() {
       el.textContent = b.text;
     }
     el.dataset.seq = b.seq;
+    if (fix.skip.includes(b.seq)) { el.classList.add('fixed-skip'); el.dataset.fix = 'Skipped'; }
+    if (fix.order && rank.get(b.seq) !== b.seq) el.classList.add('fixed-moved');
     els.set(b.seq, el);
     frag.append(el);
   }
   root.append(frag);
   window.scrollTo(0, 0);
+  if (root.querySelector('.crop')) {
+    import('./crops.js').then(({ watchCrops }) => watchCrops(root, doc.id, () => db.get('files', doc.id).then((f) => f?.blob)));
+  }
+}
+
+// The caption that goes with a figure or table: the nearest caption block on
+// the same page, just before or after it.
+function captionFor(b) {
+  for (const d of [1, -1, 2, -2]) {
+    const c = parsed.blocks[b.seq + d];
+    if (c && c.page === b.page && c.kind === 'caption') return c;
+  }
+  return null;
 }
 
 function buildQueue() {
   queue = [];
-  for (const b of parsed.blocks) {
-    if (!readable(b.kind) || !b.text) continue;
+  for (const b of ordered()) {
+    if (!readableBlock(b) || !b.text) continue;
     for (const s of splitSentences(b.text)) {
       queue.push({
         seq: b.seq, start: s.start, end: s.end, text: b.text.slice(s.start, s.end),
@@ -146,7 +212,7 @@ function buildQueue() {
   }
   for (const [seq, el] of els) {
     const b = parsed.blocks[seq];
-    if (b && LABEL[b.kind]) el.classList.toggle('skipped-now', !readable(b.kind));
+    if (b && LABEL[b.kind]) el.classList.toggle('skipped-now', !readableBlock(b));
   }
 }
 
@@ -251,7 +317,7 @@ function applyJump() {
   if (!pendingJump || !doc || pendingJump.docId !== doc.id) return;
   const { seq, start } = pendingJump;
   pendingJump = null;
-  const k = queue.findIndex((q) => q.seq > seq || (q.seq === seq && q.end > (start || 0)));
+  const k = queue.findIndex((q) => posOf(q.seq) > posOf(seq) || (q.seq === seq && q.end > (start || 0)));
   if (k >= 0) { player.idx = k; lastUserScroll = 0; showSentence(k, queue[k], { instant: true }); }
   else els.get(seq)?.scrollIntoView({ block: 'center' });
 }
@@ -284,7 +350,7 @@ export function wireReader({ onBack }) {
       if (what === 'skip') {
         const cur = queue[player.idx];
         buildQueue();
-        const k = cur ? queue.findIndex((q) => q.seq > cur.seq || (q.seq === cur.seq && q.start >= cur.start)) : 0;
+        const k = cur ? queue.findIndex((q) => atOrAfter(q, cur.seq, cur.start)) : 0;
         player.setQueue(queue, k < 0 ? 0 : k);
       }
     },
@@ -295,8 +361,12 @@ export function wireReader({ onBack }) {
   $('reader').addEventListener('click', (e) => {
     const view = e.target.closest('button[data-page]');
     if (view) { openPage(+view.dataset.page); return; }
+    const cap = e.target.closest('button[data-cap]');
+    if (cap) { readOnce(parsed.blocks[+cap.dataset.cap]); return; }
+    if (e.target.closest('.card-block')) return;
     const el = e.target.closest('[data-seq]');
     if (!el || el.tagName === 'DETAILS') return;
+    if (moving != null) { finishMove(+el.dataset.seq); return; }
     passageSheet(+el.dataset.seq, e);
   });
 
@@ -320,7 +390,7 @@ function pageInView() {
 }
 
 function startAt(seq, offset = 0) {
-  const k = queue.findIndex((q) => q.seq > seq || (q.seq === seq && q.end > offset));
+  const k = queue.findIndex((q) => posOf(q.seq) > posOf(seq) || (q.seq === seq && q.end > offset));
   if (k < 0) { toast('Nothing after this point is set to be read aloud.'); return; }
   lastUserScroll = 0;
   speech.unlock();
@@ -336,7 +406,8 @@ function passageSheet(seq, e) {
   const sents = splitSentences(b.text);
   const s = sents.find((x) => x.end > offset) || sents[0];
   const preview = s ? b.text.slice(s.start, s.end) : b.text;
-  const canRead = readable(b.kind);
+  const canRead = readableBlock(b);
+  const skipped = fix.skip.includes(seq), forced = fix.read.includes(seq), quiet = !readable(b.kind);
   openSheet(`
     <h2>${LABEL[b.kind] || (b.kind === 'heading' ? 'Heading' : 'Passage')} · page ${b.page}</h2>
     <p style="margin:0 0 14px;color:var(--muted)">${esc(preview.slice(0, 240))}${preview.length > 240 ? '...' : ''}</p>
@@ -346,7 +417,14 @@ function passageSheet(seq, e) {
       ${b.text ? `<li><button data-act="say">${icon('mic')} Say a thought about this</button></li>
       <li><button data-act="write">${icon('edit')} Write a note about this</button></li>` : ''}
       <li><button data-act="page">${icon('page')} Show it on the original page</button></li>
-    </ul>`, (act) => {
+    </ul>
+    <h2 class="small-h">Fix the order</h2>
+    <ul class="menu-list">
+      ${quiet
+        ? `<li><button data-act="readtoo">${icon('speaker')} ${forced ? 'Stop reading this aloud' : 'Read this aloud too'}</button></li>`
+        : `<li><button data-act="skip">${icon('close')} ${skipped ? 'Read this again' : 'Don’t read this (a sidebar, an advert, a byline)'}</button></li>`}
+      <li><button data-act="move">${icon('list')} Move this: then tap the passage it should follow</button></li>
+    </ul>`, async (act) => {
     closeSheet();
     if (act === 'here') startAt(seq, canRead && s ? s.start : 0);
     else if (act === 'page') openPage(b.page);
@@ -356,7 +434,25 @@ function passageSheet(seq, e) {
       newNote({ type: 'idea', anchors: [anchorFor(seq, s?.start, s?.end)] }).then((n) => { location.hash = 'note=' + n.id; });
     }
     else if (act === 'once') readOnce(b);
+    else if (act === 'skip') { fix.skip = skipped ? fix.skip.filter((x) => x !== seq) : [...fix.skip, seq]; await saveFix(); reflow(); toast(skipped ? 'This will be read again.' : 'This will be skipped. Tap it to undo.'); }
+    else if (act === 'readtoo') { fix.read = forced ? fix.read.filter((x) => x !== seq) : [...fix.read, seq]; await saveFix(); reflow(); }
+    else if (act === 'move') { moving = seq; els.get(seq)?.classList.add('moving'); toast('Now tap the passage this should come after. Tap the same passage to cancel.'); }
   });
+}
+
+// Second tap of a move: put the block straight after the one tapped.
+async function finishMove(target) {
+  const from = moving;
+  moving = null;
+  els.get(from)?.classList.remove('moving');
+  if (target === from) { toast('Move cancelled.'); return; }
+  const list = ordered().map((b) => b.seq).filter((x) => x !== from);
+  list.splice(list.indexOf(target) + 1, 0, from);
+  fix.order = list;
+  await saveFix();
+  reflow();
+  els.get(from)?.scrollIntoView({ block: 'center' });
+  toast('Moved. Tap it again to move or skip it.');
 }
 
 function readOnce(b) {
@@ -378,17 +474,19 @@ function sectionsSheet() {
   for (const b of parsed.blocks) counts[b.kind] = (counts[b.kind] || 0) + 1;
   openSheet(`
     <h2>Sections</h2>
+    ${fix.skip.length || fix.read.length || fix.order ? `<div class="actions" style="margin:0 0 12px"><button class="text-btn" data-act="unfix">Undo all order fixes (${fix.skip.length + fix.read.length + (fix.order ? 1 : 0)})</button></div>` : ''}
     <ul class="sec-list"><li class="l1"><button data-act="top">Start of the document</button></li>${items}</ul>
     <p style="color:var(--muted);font-size:14px;margin-top:14px">${parsed.stats.pages} pages. Set aside from reading: ${[
       counts.reference && `${counts.reference} references`, counts.footnote && `${counts.footnote} footnotes`,
       counts.table && `${counts.table} tables`, parsed.stats.runningDropped && `${parsed.stats.runningDropped} running headers`,
       parsed.stats.pageNumbersDropped && `${parsed.stats.pageNumbersDropped} page numbers`].filter(Boolean).join(', ') || 'nothing'}.</p>`, (act) => {
     closeSheet();
+    if (act === 'unfix') { fix = { skip: [], read: [], order: null, v: 0 }; saveFix().then(() => reflow()); toast('Back to the order the app worked out.'); return; }
     const seq = act === 'top' ? 0 : +act;
     const el = els.get(seq) || $('reader').firstElementChild;
     programmaticScroll = Date.now();
     el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    const k = queue.findIndex((q) => q.seq >= seq);
+    const k = queue.findIndex((q) => posOf(q.seq) >= posOf(seq));
     if (k >= 0) { if (player.playing) player.play(k); else { player.idx = k; showSentence(k, queue[k], { scroll: false }); } }
   });
 }

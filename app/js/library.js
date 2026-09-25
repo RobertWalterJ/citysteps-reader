@@ -5,6 +5,7 @@ import * as db from './db.js';
 import { esc, icon, openSheet, closeSheet, toast } from './ui.js';
 import { removeDoc, reparse } from './importer.js';
 import { LAYOUT_VERSION } from './parse/layout.js';
+import { ocrStatus } from './ocr-queue.js';
 
 const $ = (id) => document.getElementById(id);
 const TYPES = { academic: 'Academic', report: 'Report', news: 'News', whitepaper: 'White paper', other: 'Other' };
@@ -31,6 +32,7 @@ export async function renderLibrary() {
       d.authors?.[0] && esc(d.authors[0]), d.year, d.pageCount && `${d.pageCount} page${d.pageCount === 1 ? '' : 's'}`,
       d.parse?.status === 'failed' ? `<span style="color:var(--danger)">Could not read: ${esc(d.parse.error)}</span>` : '',
       pct ? `${pct}% read` : '',
+      (() => { const o = ocrStatus(d.id); return o ? `<span class="working"><span class="dot"></span>${o.state === 'failed' ? `Could not read the scanned pages: ${esc(o.error)}` : o.state === 'loading' ? 'Getting text recognition ready' : o.state === 'finishing' ? 'Putting the scanned pages in order' : `Reading scanned pages: ${o.done} of ${o.total}`}</span>` : ''; })(),
     ].filter(Boolean).join('<span aria-hidden="true">·</span>');
     rows.push(`<li class="doc">
       <button class="doc-open" data-open="${d.id}"><span class="doc-title">${esc(d.title)}</span><span class="doc-meta">${meta}</span></button>

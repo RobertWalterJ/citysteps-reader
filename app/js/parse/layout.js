@@ -9,7 +9,7 @@
 // Input: pages from extract.js. Output: { blocks, sections, stats }.
 // Pure functions, no DOM, no PDF.js: runs in the worker and in Node tests.
 
-export const LAYOUT_VERSION = 4;
+export const LAYOUT_VERSION = 5;
 
 const HEAD_BAND = 0.09;          // top and bottom 9% of a page: where running headers live
 const REFS_RE = /^(\d+\.?\s*)?(references|bibliography|works cited|literature cited|sources|endnotes|notes|reference list)\s*:?$/i;
@@ -177,20 +177,28 @@ const norm = (s) => s.replace(/\d+/g, '#').replace(/\s+/g, ' ').trim().toLowerCa
 const isPageNumber = (t) => /^((page|p\.)\s*)?[\divxlc]{1,5}(\s*(of|\/)\s*\d+)?$/i.test(t) || /^[-–|•]\s*\d{1,4}\s*[-–|•]$/.test(t);
 
 export function layout(pages) {
-  const stats = { pages: pages.length, textPages: 0, scanPages: [], twoColumnPages: 0, runningDropped: 0, pageNumbersDropped: 0, tables: 0, footnotes: 0, tagged: false };
+  const stats = { pages: pages.length, textPages: 0, scanPages: [], ocrPages: [], twoColumnPages: 0, runningDropped: 0, pageNumbersDropped: 0, tables: 0, footnotes: 0, tagged: false };
   const per = pages.map((pg) => {
     const scan = pg.items.length < 5;
-    if (scan) { stats.scanPages.push(pg.n); return { pg, scan, lines: [], tables: [] }; }
+    if (scan) { stats.scanPages.push(pg.n); return { pg, scan, lines: [], tables: [], figures: [] }; }
     stats.textPages++;
+    if (pg.items.some((i) => i.font === 'ocr')) stats.ocrPages.push(pg.n);
     const tables = tableRegions(pg);
     // Take table rows out before looking for a gutter: a grid of cells can
     // look like two columns.
     const inTable = (i) => tables.some((t) => i.y <= t.top && i.y >= t.bottom);
-    const prose = { ...pg, items: pg.items.filter((i) => !inTable(i)) };
+    // Figures: images on the page, unless it is a scan read by OCR (the whole
+    // page is one image then). Text lying on an image (map labels, chart
+    // text) belongs to the figure, not the prose.
+    const ocrPage = pg.items.some((i) => i.font === 'ocr');
+    const figures = ocrPage ? [] : (pg.images || []).filter((f) => f.w * f.h < pg.W * pg.H * 0.85).map((f) => ({ ...f, labels: [] }));
+    const onFigure = (i) => figures.find((f) => i.x >= f.x - 2 && i.x + i.w <= f.x + f.w + 2 && i.y >= f.y - 2 && i.y <= f.y + f.h + 2);
+    for (const i of pg.items) { const f = onFigure(i); if (f) f.labels.push(i.s); }
+    const prose = { ...pg, items: pg.items.filter((i) => !inTable(i) && !onFigure(i)) };
     const gutter = findGutter(prose);
     if (gutter != null) stats.twoColumnPages++;
     const lines = order(buildLines(prose, gutter), gutter);
-    return { pg, scan, lines, tables, gutter };
+    return { pg, scan, lines, tables, figures, gutter };
   });
 
   // Body text size: the size carrying the most characters.
@@ -232,15 +240,21 @@ export function layout(pages) {
 
   for (const p of per) {
     const { pg } = p;
-    if (p.scan) { push({ kind: 'scan', page: pg.n, text: '', bbox: { page: pg.n, x: 0, y: 0, w: pg.W, h: pg.H } }); continue; }
+    if (p.scan) { push({ kind: 'scan', page: pg.n, text: '', tried: !!pg.ocrTried, bbox: { page: pg.n, x: 0, y: 0, w: pg.W, h: pg.H } }); continue; }
 
-    // Tables become one block each, positioned by their top edge.
+    // Tables and figures become one card each, placed in reading order by
+    // their top edge.
     const tableBlocks = p.tables.map((t) => ({
       kind: 'table', page: pg.n, y: t.top,
       text: t.rows.map((r) => r.cells.map((c) => c.t.trim()).join(' | ')).join('\n'),
       bbox: { page: pg.n, x: 0, y: t.bottom, w: pg.W, h: t.top - t.bottom },
     }));
     stats.tables += tableBlocks.length;
+    for (const f of p.figures) {
+      tableBlocks.push({ kind: 'figure', page: pg.n, y: f.y + f.h, text: f.labels.join(' ').replace(/\s+/g, ' ').trim(), bbox: { page: pg.n, x: f.x, y: f.y, w: f.w, h: f.h } });
+    }
+    stats.figures = (stats.figures || 0) + p.figures.length;
+    tableBlocks.sort((a, b) => b.y - a.y);
 
     // Drop running heads and page numbers; mark footnotes.
     const kept = [];
@@ -312,6 +326,9 @@ export function layout(pages) {
       else if (nonLatin(b.text) > 0.5) b.kind = nonLatin(b.text.normalize('NFKC')) > 0.5 ? 'other' : 'formula';
       else if (b.foot) { b.kind = 'footnote'; stats.footnotes++; }
       else if (CAPTION_RE.test(b.text)) b.kind = 'caption';
+      // Charts drawn as vector graphics leave their data labels behind as
+      // runs of bare numbers ("12.0% 22.0% 24.8% 34.2%", CPPS page 27).
+      else if (mostlyNumbers(b.text)) b.kind = 'numbers';
       // The abstract is the first substantial paragraph after its heading;
       // journal sidebars ("Urban Studies", a DOI line) can sit in between.
       else if (afterAbstract && b.text.length > 200) { b.kind = 'abstract'; afterAbstract = false; }
@@ -338,6 +355,13 @@ export function layout(pages) {
   stats.body = body;
   stats.running = [...running];
   return { blocks: merged, sections: sections.filter((s) => s.seq >= 0), stats };
+}
+
+function mostlyNumbers(t) {
+  const words = t.split(/\s+/).filter(Boolean);
+  if (words.length < 4) return false;
+  const num = words.filter((w) => /^[-+(]?[$]?\d[\d,.]*%?[)]?$/.test(w)).length;
+  return num / words.length >= 0.7;
 }
 
 function nonLatin(t) {

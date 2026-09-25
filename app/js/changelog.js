@@ -4,6 +4,15 @@
 
 export const CHANGES = [
   {
+    v: '0.5.0', date: '2026-09-25',
+    items: [
+      'Scanned pages are read: text recognition runs on the phone in the background, and the pages become readable like any other.',
+      'Figures, photos and tables show a picture of themselves in the reader, with their caption and a button to hear it.',
+      'Chart numbers and labels on pictures are no longer read out as a string of figures.',
+      'Fix the order: tap a passage to skip it, have a footnote read, or move it after another passage. Undo from Sections.',
+    ],
+  },
+  {
     v: '0.4.0', date: '2026-09-24',
     items: [
       'Natural voices: Alba (Scottish) reads by default, with Northern English as a second choice. The phone’s own voice is still there as an instant fallback.',

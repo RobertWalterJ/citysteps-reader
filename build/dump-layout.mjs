@@ -6,13 +6,13 @@
 // For eyeballing only; the output contains document text, so never commit it.
 
 import { readFileSync } from 'node:fs';
-import { getDocument } from 'pdfjs-dist/legacy/build/pdf.mjs';
+import { getDocument, OPS } from 'pdfjs-dist/legacy/build/pdf.mjs';
 import { extractPages } from '../app/js/parse/extract.js';
 import { layout } from '../app/js/parse/layout.js';
 
 export async function parseFile(file) {
   const doc = await getDocument({ data: new Uint8Array(readFileSync(file)), verbosity: 0 }).promise;
-  const pages = await extractPages(doc);
+  const pages = await extractPages(doc, { OPS });
   return layout(pages);
 }
 

@@ -9,6 +9,7 @@ import { openDoc, closeDoc, wireReader, setPendingJump } from './reader.js';
 import { renderNotes, openNote, wireNotes, importFromShare } from './notes/view.js';
 import { recoverInterrupted } from './notes/store.js';
 import { runQueue } from './notes/transcribe.js';
+import { queueOcr, resumeOcr, onOcrStatus } from './ocr-queue.js';
 import { wireSheets, toast, esc, openSheet, closeSheet } from './ui.js';
 import { applyPrefs } from './prefs.js';
 import { initUpdates } from './updates.js';
@@ -69,6 +70,7 @@ async function addFiles(files, source = 'file') {
         onProgress: (p) => { const w = working.get(key); if (w) { w.progress = p; throttledRender(); } },
       });
       lastId = doc.id;
+      if (!duplicate) queueOcr(doc);
       if (duplicate) toast(`${doc.title} is already in your library.`);
     } catch (e) {
       toast(e.message || 'That PDF could not be read.');
@@ -148,5 +150,12 @@ await route();
 // Recordings interrupted by a crash are joined and queued; then anything
 // waiting to be written out carries on.
 recoverInterrupted().catch(() => 0).then(() => runQueue());
+// Scanned pages are read in the background; the library shows progress, and
+// a document open in the reader refreshes when its pages have been read.
+resumeOcr();
+onOcrStatus((id, s) => {
+  if (!$('libraryView').hidden) throttledRender();
+  if (s?.state === 'done' && location.hash === '#doc=' + id) { toast('Scanned pages are now readable.'); route(); }
+});
 if (new URLSearchParams(location.search).has('shared')) history.replaceState(null, '', location.pathname + location.hash);
 await drainInbox();
