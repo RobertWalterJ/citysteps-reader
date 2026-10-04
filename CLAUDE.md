@@ -43,3 +43,15 @@ Robert's personal phone app for reading PDFs aloud and capturing ideas. Read `PL
 - Never put regex or `\n` inside a Bash heredoc that feeds Python: `\b` became a backspace byte and `'\n'` became a real line break. Write the edit script to a file with the Write tool, or use Edit.
 - The test browser pane is hidden: requestAnimationFrame and IntersectionObserver do not fire there. PDF.js page renders use `intent: 'print'` so OCR and crops work regardless; in tests, stub IntersectionObserver.
 - Release rule: bump `package.json` and add a `changelog.js` entry together (`verify` fails otherwise); the app shows "Updated to v..." from it.
+
+## PWA identity rules (shared origin)
+
+This app shares `https://robertwalterj.github.io/` with all of Robert's other apps, so browser storage and Chrome install records are shared. Full rules: `PWA-IDENTITY-RULES.md` in `GPA Work - Claude Cowork\PWA Repos\`.
+
+- Manifest `id` is unique and never the origin root: use `/<repo>/`. `scope` and `start_url` stay in this app's own folder, with no `#fragment`.
+- Every cache, localStorage key and IndexedDB name carries this app's prefix.
+- The service worker `activate` step deletes only caches with this app's prefix (beware overlapping prefixes). Never call global `caches.match()`; use `caches.open(OWN).then(c => c.match(req))`.
+- Never serve `manifest.webmanifest` cache-first. Bump the cache name when the shell changes.
+- Never edit a generated `docs/` by hand: fix the source and rebuild.
+- Changing the id or scope makes Chrome treat this as a new app: tell Robert to uninstall and reinstall.
+- If Chrome says "already installed" when it is not, add an in-page Install button (`beforeinstallprompt`) before anything drastic. Never suggest clearing site data for the whole origin without warning, because it resets every app's saved progress.
