@@ -4,6 +4,12 @@
 
 export const CHANGES = [
   {
+    v: '0.6.1', date: '2026-10-04',
+    items: [
+      'Fix: the app no longer claims the identity of the whole site on the phone, so other apps on the same address can be installed on their own.',
+    ],
+  },
+  {
     v: '0.6.0', date: '2026-09-25',
     items: [
       'Search: a new tab searches every document and note on the phone, and opens right at the passage.',

@@ -2,7 +2,7 @@
   "name": "CitySteps Reader",
   "short_name": "Reader",
   "description": "Read PDFs aloud and catch the ideas they spark.",
-  "id": "./",
+  "id": "/citysteps-reader/",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
